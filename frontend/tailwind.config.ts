@@ -18,6 +18,12 @@ const config: Config = {
         muted: "#6b6b6b",
         input: "#E8E6E0",
         "input-deep": "#E5E4DE",
+        sidebar: {
+          bg: "#EBEBE4",
+          active: "#D9E8D1",
+          text: "#4A4A4A",
+        },
+        "olive-cta": "#556B2F",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
