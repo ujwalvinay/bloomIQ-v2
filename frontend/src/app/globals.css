@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #f9f8f3;
+  --olive: #6b7a63;
+}
+
+body {
+  @apply bg-cream text-ink antialiased;
+}
+
+/* Smooth focus rings matching botanical palette */
+input:focus-visible,
+button:focus-visible {
+  @apply outline-none ring-2 ring-olive/40 ring-offset-2 ring-offset-cream;
+}
