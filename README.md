@@ -1,8 +1,8 @@
-# 🌱 Verdant (Working Title)
+# 🌱 BloomIQ
 
 ## 📌 Overview
 
-Verdant is a modern plant care tracking web application designed to help users manage and monitor their plants efficiently. It combines simple tracking features with AI-powered insights to improve plant health and user engagement.
+BloomIQ is a modern plant care tracking web application designed to help users manage and monitor their plants efficiently. It combines simple tracking features with AI-powered insights to improve plant health and user engagement.
 
 ---
 
@@ -271,4 +271,4 @@ Verdant is a modern plant care tracking web application designed to help users m
 
 ## 🏁 Conclusion
 
-Verdant aims to be a smart, user-friendly plant care assistant that blends tracking with AI to enhance user experience and plant health management.
+BloomIQ aims to be a smart, user-friendly plant care assistant that blends tracking with AI to enhance user experience and plant health management.
