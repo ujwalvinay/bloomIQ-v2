@@ -10,6 +10,12 @@ import {
 import { requireAuth } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { objectIdParamSchema } from "@/lib/validators/common";
+import {
+  MAX_PLANT_IMAGE_BYTES,
+  PLANT_IMAGE_MIME,
+  normalizeImageMimeType,
+  sniffImageMime,
+} from "@/lib/plant-image";
 import { updatePlantBodySchema } from "@/lib/validators/plants";
 import Plant from "@/models/Plant";
 import CarePlan from "@/models/CarePlan";
@@ -66,15 +72,65 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         422
       );
     }
-    if (Object.keys(parsed.data).length === 0) {
+    const payload = { ...parsed.data };
+    const imageB64 = payload.imageBase64;
+    const imageMimeDeclared = payload.imageMimeType;
+    delete payload.imageBase64;
+    delete payload.imageMimeType;
+
+    const $set: Record<string, unknown> = { ...payload };
+
+    if (typeof imageB64 === "string" && imageB64.length > 0) {
+      let buf: Buffer;
+      try {
+        buf = Buffer.from(imageB64, "base64");
+      } catch {
+        return errorResponse("Bad request", "Invalid base64 image data", 400);
+      }
+      if (buf.length > MAX_PLANT_IMAGE_BYTES) {
+        return errorResponse(
+          "Payload too large",
+          "Image must be 3MB or smaller after decoding",
+          413
+        );
+      }
+      if (buf.length === 0) {
+        return errorResponse("Bad request", "Empty image data", 400);
+      }
+      const sniffed = sniffImageMime(buf);
+      const declared =
+        imageMimeDeclared &&
+        PLANT_IMAGE_MIME.has(normalizeImageMimeType(imageMimeDeclared))
+          ? normalizeImageMimeType(imageMimeDeclared)
+          : null;
+      const mime = sniffed ?? declared;
+      if (!mime) {
+        return errorResponse(
+          "Bad request",
+          "Image must be JPEG, PNG, WebP, or GIF",
+          400
+        );
+      }
+      $set.imageData = buf;
+      $set.imageMimeType = mime;
+      $set.hasEmbeddedImage = true;
+    }
+
+    if (Object.keys($set).length === 0) {
       return errorResponse("Bad request", "No fields to update", 400);
     }
+
+    const replaceEmbeddedPhoto =
+      typeof imageB64 === "string" && imageB64.length > 0;
+
     const plant = await Plant.findOneAndUpdate(
       {
         _id: idParsed.data,
         userId: new Types.ObjectId(auth.user._id),
       },
-      { $set: parsed.data },
+      replaceEmbeddedPhoto
+        ? { $set, $unset: { imageUrl: "" } }
+        : { $set },
       { new: true, runValidators: true }
     ).lean();
     if (!plant) {
