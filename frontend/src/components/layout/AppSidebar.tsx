@@ -56,7 +56,7 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-[280px] shrink-0 flex-col bg-sidebar-bg px-4 py-8">
+    <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-[280px] shrink-0 flex-col overflow-y-auto bg-sidebar-bg px-4 py-8">
       <div className="px-3">
         <p className="text-lg font-bold tracking-tight text-sidebar-text">
           BloomIQ

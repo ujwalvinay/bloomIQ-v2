@@ -6,9 +6,11 @@ export default function AppShellLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-cream">
+    <div className="min-h-screen bg-cream">
       <AppSidebar />
-      <div className="min-w-0 flex-1 overflow-x-auto">{children}</div>
+      <div className="min-h-screen min-w-0 flex-1 overflow-x-auto pl-[280px]">
+        {children}
+      </div>
     </div>
   );
 }
