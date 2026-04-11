@@ -18,13 +18,20 @@ function toIsoRequired(d: unknown): string {
 
 export function serializePlant(doc: unknown) {
   const d = asRecord(doc);
+  const id = String(d._id);
+  const embedded = d.hasEmbeddedImage === true;
+  const externalUrl =
+    d.imageUrl != null && String(d.imageUrl).trim() !== ""
+      ? String(d.imageUrl)
+      : undefined;
+  const imageUrl = embedded ? `/api/plants/${id}/image` : externalUrl;
   return {
-    _id: String(d._id),
+    _id: id,
     userId: String(d.userId),
     name: String(d.name),
     species: d.species != null ? String(d.species) : undefined,
     location: d.location != null ? String(d.location) : undefined,
-    imageUrl: d.imageUrl != null ? String(d.imageUrl) : undefined,
+    imageUrl,
     notes: d.notes != null ? String(d.notes) : undefined,
     status: String(d.status),
     createdAt: toIso(d.createdAt),

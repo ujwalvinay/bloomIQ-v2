@@ -24,6 +24,26 @@ const DEMO_EMAIL = "demo@bloomiq.app";
 const DEMO_PASSWORD = "password123";
 const DEMO_NAME = "Demo Gardener";
 
+/** Align hasEmbeddedImage with stored image bytes (fixes list URLs after schema changes). */
+async function syncEmbeddedImageFlags() {
+  let fixed = 0;
+  const cursor = Plant.find({}).select("+imageData").cursor();
+  for await (const p of cursor) {
+    const buf = p.imageData as Buffer | undefined;
+    const has = Boolean(buf && Buffer.isBuffer(buf) && buf.length > 0);
+    if (Boolean(p.hasEmbeddedImage) !== has) {
+      await Plant.collection.updateOne(
+        { _id: p._id },
+        { $set: { hasEmbeddedImage: has } }
+      );
+      fixed += 1;
+    }
+  }
+  if (fixed > 0) {
+    console.log(`Synced hasEmbeddedImage for ${fixed} plant document(s).`);
+  }
+}
+
 async function main() {
   if (!process.env.MONGODB_URI) {
     console.error("Missing MONGODB_URI. Copy .env.example to .env and fill values.");
@@ -31,6 +51,7 @@ async function main() {
   }
 
   await connectToDatabase();
+  await syncEmbeddedImageFlags();
 
   let user = await User.findOne({ email: DEMO_EMAIL });
   if (!user) {

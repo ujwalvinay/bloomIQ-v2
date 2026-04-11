@@ -11,6 +11,9 @@ export const createPlantBodySchema = z.object({
     .union([z.string().url().max(2000), z.literal("")])
     .optional()
     .transform((v) => (v === "" ? undefined : v)),
+  /** Raw base64 (no data: prefix). Prefer this over multipart when using a dev proxy that drops FormData bodies. */
+  imageBase64: z.string().max(6_500_000).optional(),
+  imageMimeType: z.string().max(80).optional(),
   notes: z.string().max(5000).optional(),
   status: plantStatusEnum.optional(),
 });
