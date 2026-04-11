@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       overdueTasks,
       completedThisWeek,
       recentActivityDocs,
+      distinctLocations,
     ] = await Promise.all([
       Plant.countDocuments({ userId }),
       Plant.countDocuments({ userId, status: "healthy" }),
@@ -56,6 +57,10 @@ export async function GET(request: NextRequest) {
         .sort({ date: -1 })
         .limit(10)
         .lean(),
+      Plant.distinct("location", {
+        userId,
+        location: { $nin: [null, ""] },
+      }),
     ]);
 
     return successResponse("Dashboard summary", {
@@ -63,6 +68,7 @@ export async function GET(request: NextRequest) {
       totalPlants,
       healthyPlants,
       needsAttentionPlants,
+      livingZones: distinctLocations.length,
       tasksDueToday,
       overdueTasks,
       completedThisWeek,

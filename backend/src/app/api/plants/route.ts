@@ -21,6 +21,7 @@ import {
   normalizeImageMimeType,
   sniffImageMime,
 } from "@/lib/plant-image";
+import CarePlan from "@/models/CarePlan";
 import Plant from "@/models/Plant";
 import { serializePlant } from "@/lib/serializers";
 
@@ -39,10 +40,28 @@ export async function GET(request: NextRequest) {
         422
       );
     }
-    const { page, limit, search, status } = parsed.data;
+    const {
+      page,
+      limit,
+      search,
+      status,
+      location,
+      sort,
+      includeArchived,
+    } = parsed.data;
     const userId = new Types.ObjectId(auth.user._id);
     const filter: Record<string, unknown> = { userId };
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    } else if (!includeArchived) {
+      filter.status = { $ne: "archived" };
+    }
+    if (location?.trim()) {
+      filter.location = new RegExp(
+        `^${location.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        "i"
+      );
+    }
     if (search?.trim()) {
       const rx = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       filter.$or = [
@@ -52,9 +71,46 @@ export async function GET(request: NextRequest) {
       ];
     }
     const skip = (page - 1) * limit;
+
+    if (sort === "watering") {
+      const [all, total] = await Promise.all([
+        Plant.find(filter).lean(),
+        Plant.countDocuments(filter),
+      ]);
+      const plans = await CarePlan.find({
+        userId,
+        type: "watering",
+        isActive: true,
+      })
+        .select("plantId nextDueAt")
+        .lean();
+      const nextByPlant = new Map<string, number>();
+      for (const p of plans) {
+        nextByPlant.set(String(p.plantId), new Date(p.nextDueAt).getTime());
+      }
+      const inf = Number.MAX_SAFE_INTEGER;
+      all.sort((a, b) => {
+        const ta = nextByPlant.get(String(a._id)) ?? inf;
+        const tb = nextByPlant.get(String(b._id)) ?? inf;
+        if (ta !== tb) return ta - tb;
+        return (
+          new Date(b.createdAt as Date).getTime() -
+          new Date(a.createdAt as Date).getTime()
+        );
+      });
+      const slice = all.slice(skip, skip + limit);
+      return successResponse("Plants fetched", {
+        items: slice.map(serializePlant),
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      });
+    }
+
     const [items, total] = await Promise.all([
       Plant.find(filter)
-        .sort({ createdAt: -1 })
+        .sort(sort === "name" ? { name: 1 } : { createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
