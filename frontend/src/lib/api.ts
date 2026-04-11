@@ -5,6 +5,12 @@ export type ApiEnvelope<T> = {
   error: string | null;
 };
 
+export async function apiGet<T>(path: string): Promise<ApiEnvelope<T>> {
+  const res = await fetch(path, { credentials: "include" });
+  const json = (await res.json()) as ApiEnvelope<T>;
+  return json;
+}
+
 export async function apiPost<T>(
   path: string,
   body: Record<string, unknown>
