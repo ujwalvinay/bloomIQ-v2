@@ -1,14 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 
 type Props = {
   searchParams: Record<string, string | string[] | undefined>;
 };
 
-export default function LoginPage({ searchParams }: Props) {
-  const registered = searchParams.registered === "1";
-  const resetOk = searchParams.reset === "1";
+export default function ResetPasswordPage({ searchParams }: Props) {
+  const raw = searchParams.token;
+  const token = typeof raw === "string" ? raw : "";
 
   return (
     <div className="flex min-h-screen">
@@ -33,8 +33,7 @@ export default function LoginPage({ searchParams }: Props) {
             BloomIQ
           </h2>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-white/85">
-            Curating thoughtful plant care for your digital conservatory—schedules,
-            reminders, and growth in one calm place.
+            Pick a password you&apos;ll remember—then get back to your plants.
           </p>
         </div>
       </section>
@@ -48,17 +47,7 @@ export default function LoginPage({ searchParams }: Props) {
             BloomIQ
           </Link>
         </div>
-        {registered ? (
-          <p className="mb-4 w-full max-w-md rounded-full bg-olive/10 px-4 py-2 text-center text-sm text-olive-dark">
-            Account created. Sign in to continue.
-          </p>
-        ) : null}
-        {resetOk ? (
-          <p className="mb-4 w-full max-w-md rounded-full bg-olive/10 px-4 py-2 text-center text-sm text-olive-dark">
-            Password updated. Sign in with your new password.
-          </p>
-        ) : null}
-        <LoginForm />
+        <ResetPasswordForm token={token} />
       </section>
     </div>
   );

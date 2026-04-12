@@ -90,9 +90,8 @@ export function LoginForm() {
               Password
             </label>
             <Link
-              href="#"
+              href="/forgot-password"
               className="text-xs font-medium text-olive hover:text-olive-dark"
-              onClick={(e) => e.preventDefault()}
             >
               Forgot password?
             </Link>

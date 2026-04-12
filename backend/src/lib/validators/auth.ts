@@ -20,3 +20,12 @@ export const updateMeBodySchema = z
   .refine((b) => Object.keys(b).length > 0, {
     message: "At least one field is required",
   });
+
+export const forgotPasswordBodySchema = z.object({
+  email: z.string().email().max(255),
+});
+
+export const resetPasswordBodySchema = z.object({
+  token: z.string().min(16, "Invalid reset link"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});

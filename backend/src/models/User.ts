@@ -13,6 +13,13 @@ const userSchema = new Schema(
       index: true,
     },
     passwordHash: { type: String, required: true, select: false },
+    passwordResetTokenHash: {
+      type: String,
+      select: false,
+      sparse: true,
+      unique: true,
+    },
+    passwordResetExpiresAt: { type: Date, select: false },
     timezone: { type: String, default: "Asia/Kolkata", trim: true },
     notificationEnabled: { type: Boolean, default: true },
     refreshTokenVersion: { type: Number, default: 0 },

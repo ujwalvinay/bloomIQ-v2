@@ -12,6 +12,7 @@ import {
   Sprout,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiGet, apiPatch, type ApiEnvelope } from "@/lib/api";
 
@@ -326,14 +327,9 @@ export function SettingsPageContent() {
               </h2>
               <ul className="mt-5 space-y-3">
                 <li>
-                  <button
-                    type="button"
+                  <Link
+                    href="/forgot-password"
                     className="flex w-full items-center gap-3 rounded-2xl bg-archive-cream px-4 py-3.5 text-left transition hover:bg-sage/50"
-                    onClick={() =>
-                      window.alert(
-                        "Password changes will be available in a future update.",
-                      )
-                    }
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-forest shadow-sm">
                       <Lock className="h-5 w-5" strokeWidth={1.75} aria-hidden />
@@ -343,14 +339,14 @@ export function SettingsPageContent() {
                         Change password
                       </span>
                       <span className="mt-0.5 block text-xs text-muted">
-                        Last updated 3 months ago
+                        We&apos;ll email you a secure reset link
                       </span>
                     </span>
                     <ChevronRight
                       className="h-5 w-5 shrink-0 text-muted"
                       aria-hidden
                     />
-                  </button>
+                  </Link>
                 </li>
                 <li>
                   <button
