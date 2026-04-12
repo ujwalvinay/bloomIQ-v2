@@ -14,6 +14,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { absoluteApiUrl } from "@/lib/backend-origin";
 import { apiGet, apiPost, type ApiEnvelope } from "@/lib/api";
 
 type SafeUser = {
@@ -473,13 +474,22 @@ export function DashboardContent() {
                 >
                   <div className="relative aspect-[4/3] bg-stone-200">
                     {plant.imageUrl ? (
-                      <Image
-                        src={plant.imageUrl}
-                        alt=""
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 1024px) 100vw, 33vw"
-                      />
+                      plant.imageUrl.startsWith("/api/plants/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- cookie-auth bytes; bypass rewrite for binary
+                        <img
+                          src={absoluteApiUrl(plant.imageUrl)}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={plant.imageUrl}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 1024px) 100vw, 33vw"
+                        />
+                      )
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-muted">
                         <Sprout className="h-14 w-14" strokeWidth={1.25} />

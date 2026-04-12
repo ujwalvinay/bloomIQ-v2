@@ -36,6 +36,19 @@ function monthsToFrequencyDays(months: number): number {
   return Math.max(1, Math.round(months * 30));
 }
 
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const s = r.result as string;
+      const comma = s.indexOf(",");
+      resolve(comma >= 0 ? s.slice(comma + 1) : s);
+    };
+    r.onerror = () => reject(new Error("Could not read image file"));
+    r.readAsDataURL(file);
+  });
+}
+
 export function AddPlantContent() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -48,6 +61,7 @@ export function AddPlantContent() {
   const [waterDays, setWaterDays] = useState(7);
   const [fertilizeMonths, setFertilizeMonths] = useState(1);
   const [imageUrl, setImageUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +91,7 @@ export function AddPlantContent() {
   const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
+    setSelectedFile(file);
     setPreviewUrl((prev) => {
       if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
@@ -93,12 +108,19 @@ export function AddPlantContent() {
     }
     setSubmitting(true);
     try {
-      const plantRes = await apiPost<CreatedPlant>("/api/plants", {
+      const payload: Record<string, unknown> = {
         name: trimmedName,
         species: species.trim() || undefined,
         location,
         imageUrl: imageUrl.trim() || undefined,
-      });
+      };
+      if (selectedFile) {
+        const imageBase64 = await readFileAsBase64(selectedFile);
+        payload.imageBase64 = imageBase64;
+        payload.imageMimeType = selectedFile.type || "application/octet-stream";
+        delete payload.imageUrl;
+      }
+      const plantRes = await apiPost<CreatedPlant>("/api/plants", payload);
       if (!plantRes.success || !plantRes.data) {
         setError(plantRes.error || plantRes.message);
         return;

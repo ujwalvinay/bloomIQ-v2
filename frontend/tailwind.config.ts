@@ -10,6 +10,14 @@ const config: Config = {
     extend: {
       colors: {
         cream: "#F9F8F3",
+        /** My Plants page backdrop */
+        "plants-canvas": "#F5F4EF",
+        /** Plant archive / detail */
+        "archive-cream": "#F9F7F0",
+        "archive-sage": "#DDE7C7",
+        forest: "#4A5D45",
+        sage: "#E2E8D8",
+        alert: "#E57373",
         olive: {
           DEFAULT: "#6B7A63",
           dark: "#4a5544",

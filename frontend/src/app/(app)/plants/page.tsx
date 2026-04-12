@@ -1,10 +1,18 @@
+import { Suspense } from "react";
+import { PlantsPageContent } from "@/components/plants/PlantsPageContent";
+
+function PlantsLoading() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center bg-plants-canvas px-8">
+      <p className="text-sm text-muted">Loading your collection…</p>
+    </div>
+  );
+}
+
 export default function PlantsPage() {
   return (
-    <main className="p-8 lg:p-10">
-      <h1 className="text-2xl font-semibold text-ink">My plants</h1>
-      <p className="mt-2 text-sm text-muted">
-        Your collection will appear here.
-      </p>
-    </main>
+    <Suspense fallback={<PlantsLoading />}>
+      <PlantsPageContent />
+    </Suspense>
   );
 }
