@@ -14,6 +14,8 @@ export type SafeUser = {
   email: string;
   timezone: string;
   notificationEnabled: boolean;
+  /** Same-origin path to load bytes (use backend absolute URL in <img> when needed). */
+  avatarUrl: string | null;
   createdAt: string;
   updatedAt: string;
 };

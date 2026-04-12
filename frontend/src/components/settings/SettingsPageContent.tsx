@@ -11,10 +11,16 @@ import {
   Shield,
   Sprout,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiGet, apiPatch, type ApiEnvelope } from "@/lib/api";
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+  type ApiEnvelope,
+} from "@/lib/api";
+import { absoluteApiUrl } from "@/lib/backend-origin";
 
 const LS_KEY = "bloomiq-account-settings";
 
@@ -24,7 +30,24 @@ type SafeUser = {
   email: string;
   timezone: string;
   notificationEnabled: boolean;
+  avatarUrl: string | null;
+  updatedAt?: string;
 };
+
+const MAX_AVATAR_BYTES = 3 * 1024 * 1024;
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const r = reader.result as string;
+      const i = r.indexOf(",");
+      resolve(i >= 0 ? r.slice(i + 1) : r);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Read failed"));
+    reader.readAsDataURL(file);
+  });
+}
 
 type LocalPrefs = {
   fertilizationTips: boolean;
@@ -121,7 +144,10 @@ export function SettingsPageContent() {
   const [email, setEmail] = useState("");
   const [wateringAlerts, setWateringAlerts] = useState(true);
   const [localPrefs, setLocalPrefs] = useState<LocalPrefs>(defaultLocalPrefs);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarBust, setAvatarBust] = useState(0);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -135,6 +161,8 @@ export function SettingsPageContent() {
       setDisplayName(res.data.name);
       setEmail(res.data.email);
       setWateringAlerts(res.data.notificationEnabled);
+      setAvatarUrl(res.data.avatarUrl ?? null);
+      setAvatarBust(Date.now());
       setLocalPrefs(loadLocalPrefs());
     } finally {
       setLoading(false);
@@ -145,22 +173,53 @@ export function SettingsPageContent() {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    return () => {
-      if (avatarPreview?.startsWith("blob:")) {
-        URL.revokeObjectURL(avatarPreview);
-      }
-    };
-  }, [avatarPreview]);
-
-  function onAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (!f) return;
-    if (avatarPreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(avatarPreview);
-    }
-    setAvatarPreview(URL.createObjectURL(f));
     e.target.value = "";
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      setAvatarError("Please choose an image file.");
+      return;
+    }
+    if (f.size > MAX_AVATAR_BYTES) {
+      setAvatarError("Image must be 3MB or smaller.");
+      return;
+    }
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      const imageBase64 = await readFileAsBase64(f);
+      const res = await apiPost<SafeUser>("/api/auth/me/avatar", {
+        imageBase64,
+        imageMimeType: f.type || "image/jpeg",
+      });
+      if (!res.success || !res.data) {
+        setAvatarError(res.error || res.message || "Upload failed.");
+        return;
+      }
+      setAvatarUrl(res.data.avatarUrl ?? null);
+      setAvatarBust(Date.now());
+      setSavedMsg("Profile photo saved.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  async function onRemoveAvatar() {
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      const res = await apiDelete<SafeUser>("/api/auth/me/avatar");
+      if (!res.success || !res.data) {
+        setAvatarError(res.error || res.message || "Could not remove photo.");
+        return;
+      }
+      setAvatarUrl(res.data.avatarUrl ?? null);
+      setAvatarBust(Date.now());
+      setSavedMsg("Profile photo removed.");
+    } finally {
+      setAvatarUploading(false);
+    }
   }
 
   async function onSave(e: React.FormEvent) {
@@ -184,6 +243,7 @@ export function SettingsPageContent() {
       }
       setDisplayName(patchRes.data.name);
       setWateringAlerts(patchRes.data.notificationEnabled);
+      setAvatarUrl(patchRes.data.avatarUrl ?? null);
       saveLocalPrefs(localPrefs);
       setSavedMsg("Your settings were saved.");
     } finally {
@@ -239,24 +299,29 @@ export function SettingsPageContent() {
               <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
                 <div className="relative shrink-0">
                   <div className="relative h-24 w-24 overflow-hidden rounded-full bg-sage ring-2 ring-white shadow-sm">
-                    {avatarPreview ? (
-                      <Image
-                        src={avatarPreview}
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- cookie-auth bytes; same pattern as plant images
+                      <img
+                        src={`${absoluteApiUrl(avatarUrl)}?v=${avatarBust}`}
                         alt=""
-                        fill
-                        className="object-cover"
-                        unoptimized
+                        className="h-full w-full object-cover"
                       />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-lg font-bold text-forest">
                         {initials(displayName || email || "?")}
                       </span>
                     )}
+                    {avatarUploading ? (
+                      <span className="absolute inset-0 flex items-center justify-center bg-white/60 text-xs font-semibold text-forest backdrop-blur-[2px]">
+                        …
+                      </span>
+                    ) : null}
                   </div>
                   <button
                     type="button"
                     onClick={() => fileRef.current?.click()}
-                    className="absolute -bottom-0.5 -right-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-forest text-white shadow-md transition hover:bg-olive-dark"
+                    disabled={avatarUploading}
+                    className="absolute -bottom-0.5 -right-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-forest text-white shadow-md transition hover:bg-olive-dark disabled:opacity-50"
                     aria-label="Upload profile photo"
                   >
                     <Camera className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -264,9 +329,9 @@ export function SettingsPageContent() {
                   <input
                     ref={fileRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     className="hidden"
-                    onChange={onAvatarChange}
+                    onChange={(e) => void onAvatarChange(e)}
                   />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -276,13 +341,31 @@ export function SettingsPageContent() {
                   <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Master gardener
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    className="mt-3 text-sm font-semibold text-forest underline-offset-2 hover:underline"
-                  >
-                    Change avatar
-                  </button>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      disabled={avatarUploading}
+                      className="text-sm font-semibold text-forest underline-offset-2 hover:underline disabled:opacity-50"
+                    >
+                      Change avatar
+                    </button>
+                    {avatarUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => void onRemoveAvatar()}
+                        disabled={avatarUploading}
+                        className="text-sm font-semibold text-muted underline-offset-2 hover:text-alert hover:underline disabled:opacity-50"
+                      >
+                        Remove photo
+                      </button>
+                    ) : null}
+                  </div>
+                  {avatarError ? (
+                    <p className="mt-2 text-xs text-alert" role="alert">
+                      {avatarError}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

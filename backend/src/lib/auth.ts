@@ -40,15 +40,18 @@ export function toSafeUser(doc: {
   email: string;
   timezone: string;
   notificationEnabled: boolean;
+  hasAvatar?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }): SafeUser {
+  const hasAvatar = Boolean(doc.hasAvatar);
   return {
     _id: String(doc._id),
     name: doc.name,
     email: doc.email,
     timezone: doc.timezone,
     notificationEnabled: doc.notificationEnabled,
+    avatarUrl: hasAvatar ? "/api/auth/me/avatar" : null,
     createdAt: doc.createdAt?.toISOString() ?? new Date().toISOString(),
     updatedAt: doc.updatedAt?.toISOString() ?? new Date().toISOString(),
   };
@@ -63,7 +66,7 @@ export async function getAuthUserFromRequest(
     const payload = verifyAccessToken(token);
     await connectToDatabase();
     const user = await User.findById(payload.sub).select(
-      "name email timezone notificationEnabled createdAt updatedAt"
+      "name email timezone notificationEnabled hasAvatar createdAt updatedAt"
     );
     if (!user) return null;
     return toSafeUser(user);

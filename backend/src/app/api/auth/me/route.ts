@@ -58,7 +58,7 @@ export async function PATCH(request: NextRequest) {
     await doc.save();
 
     const fresh = await User.findById(current._id).select(
-      "name email timezone notificationEnabled createdAt updatedAt"
+      "name email timezone notificationEnabled hasAvatar createdAt updatedAt"
     );
     if (!fresh) {
       return errorResponse("Not found", "User not found", 404);

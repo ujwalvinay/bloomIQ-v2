@@ -22,6 +22,8 @@ type SafeUser = {
   name: string;
   email: string;
   timezone: string;
+  avatarUrl: string | null;
+  updatedAt?: string;
 };
 
 type DashboardSummary = {
@@ -325,12 +327,21 @@ export function DashboardContent() {
                 Lead botanist
               </p>
             </div>
-            <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D9E8D1] text-sm font-semibold text-olive-cta"
-              aria-hidden
-            >
-              {initials(user?.name ?? "?")}
-            </div>
+            {user?.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- cookie-auth bytes; bypass rewrite for binary
+              <img
+                src={`${absoluteApiUrl(user.avatarUrl)}?v=${encodeURIComponent(user.updatedAt ?? "")}`}
+                alt=""
+                className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
+              />
+            ) : (
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D9E8D1] text-sm font-semibold text-olive-cta"
+                aria-hidden
+              >
+                {initials(user?.name ?? "?")}
+              </div>
+            )}
           </div>
         </div>
       </header>

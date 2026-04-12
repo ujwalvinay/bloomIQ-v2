@@ -52,3 +52,12 @@ export async function apiPostFormData<T>(
   const json = (await res.json()) as ApiEnvelope<T>;
   return json;
 }
+
+export async function apiDelete<T>(path: string): Promise<ApiEnvelope<T>> {
+  const res = await fetch(path, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiEnvelope<T>;
+  return json;
+}
