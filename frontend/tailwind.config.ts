@@ -9,6 +9,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        /** Care Calendar page backdrop */
+        "care-canvas": "#FDFBF7",
         cream: "#F9F8F3",
         /** My Plants page backdrop */
         "plants-canvas": "#F5F4EF",
