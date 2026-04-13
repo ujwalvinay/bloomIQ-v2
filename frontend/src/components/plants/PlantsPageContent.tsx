@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { absoluteApiUrl } from "@/lib/backend-origin";
 import { apiGet, type ApiEnvelope } from "@/lib/api";
+import { PlantSearchCombobox } from "@/components/plants/PlantSearchCombobox";
 
 type DashboardSummary = {
   totalPlants: number;
@@ -92,6 +93,7 @@ export function PlantsPageContent() {
 
   const pageFromUrl = Math.max(1, Number(searchParams.get("page")) || 1);
   const locationFromUrl = searchParams.get("location") ?? "";
+  const searchFromUrl = (searchParams.get("search") ?? "").trim();
   const rawSort = searchParams.get("sort") as SortKey | null;
   const sortFromUrl: SortKey =
     rawSort && SORT_OPTIONS.some((o) => o.key === rawSort) ? rawSort : "watering";
@@ -103,29 +105,54 @@ export function PlantsPageContent() {
   const [waterByPlant, setWaterByPlant] = useState<Map<string, string>>(new Map());
   const [sortOpen, setSortOpen] = useState(false);
   const [sort, setSort] = useState<SortKey>(sortFromUrl);
+  const [searchDraft, setSearchDraft] = useState(searchFromUrl);
 
   useEffect(() => {
     setSort(sortFromUrl);
   }, [sortFromUrl]);
 
+  useEffect(() => {
+    setSearchDraft(searchFromUrl);
+  }, [searchFromUrl]);
+
   const activeLocation = locationFromUrl;
 
   const syncUrl = useCallback(
-    (next: { page?: number; location?: string; sort?: SortKey }) => {
+    (next: {
+      page?: number;
+      location?: string;
+      sort?: SortKey;
+      search?: string;
+    }) => {
       const p = new URLSearchParams(searchParams.toString());
       const pg = next.page ?? pageFromUrl;
       const loc = next.location !== undefined ? next.location : activeLocation;
       const s = next.sort ?? sort;
+      const searchVal =
+        next.search !== undefined
+          ? next.search
+          : (searchParams.get("search") ?? "");
       if (pg <= 1) p.delete("page");
       else p.set("page", String(pg));
       if (!loc) p.delete("location");
       else p.set("location", loc);
       if (s === "watering") p.delete("sort");
       else p.set("sort", s);
+      const trimmed = searchVal.trim();
+      if (!trimmed) p.delete("search");
+      else p.set("search", trimmed);
       const qs = p.toString();
       router.push(qs ? `/plants?${qs}` : "/plants", { scroll: false });
     },
     [searchParams, router, pageFromUrl, activeLocation, sort]
+  );
+
+  const onSearchDebounced = useCallback(
+    (q: string) => {
+      if (q === searchFromUrl) return;
+      syncUrl({ page: 1, search: q });
+    },
+    [searchFromUrl, syncUrl]
   );
 
   const load = useCallback(async () => {
@@ -140,6 +167,7 @@ export function PlantsPageContent() {
       sort: sortParam,
     });
     if (loc) qs.set("location", loc);
+    if (searchFromUrl) qs.set("search", searchFromUrl);
 
     const [sumRes, plantsRes, plansRes]: [
       ApiEnvelope<DashboardSummary>,
@@ -184,7 +212,7 @@ export function PlantsPageContent() {
     setList(plantsRes.data);
     setWaterByPlant(wMap);
     setLoading(false);
-  }, [router, pageFromUrl, activeLocation, sort]);
+  }, [router, pageFromUrl, activeLocation, sort, searchFromUrl]);
 
   useEffect(() => {
     void load();
@@ -261,6 +289,18 @@ export function PlantsPageContent() {
           {zones === 1 ? "zone" : "zones"}.
         </p>
 
+        <div className="relative mt-6 max-w-xl">
+          <PlantSearchCombobox
+            value={searchDraft}
+            onChange={setSearchDraft}
+            onDebouncedChange={onSearchDebounced}
+            placeholder="Search by name, species, location, or notes…"
+            showClear
+            onClear={() => syncUrl({ page: 1, search: "" })}
+            inputClassName="bg-white shadow-sm ring-1 ring-stone-200/80"
+          />
+        </div>
+
         <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             {LOCATION_FILTERS.map(({ label, value }) => {
@@ -332,6 +372,40 @@ export function PlantsPageContent() {
       ) : null}
 
       <div className="px-6 py-8 lg:px-10 lg:py-10">
+        {list && list.items.length === 0 ? (
+          <div className="rounded-2xl bg-white/80 px-6 py-16 text-center ring-1 ring-stone-200/60">
+            <p className="text-lg font-semibold text-ink">
+              {searchFromUrl
+                ? `No plants match “${searchFromUrl}”`
+                : "No plants in this view"}
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              {searchFromUrl
+                ? "Try another word, clear the search, or widen your filters."
+                : "Adjust location filters or add a new specimen."}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              {searchFromUrl ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchDraft("");
+                    syncUrl({ page: 1, search: "" });
+                  }}
+                  className="rounded-full bg-forest px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest/90"
+                >
+                  Clear search
+                </button>
+              ) : null}
+              <Link
+                href="/plants/add"
+                className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-forest ring-1 ring-stone-200/80 transition hover:bg-stone-50"
+              >
+                Add specimen
+              </Link>
+            </div>
+          </div>
+        ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {list?.items.map((plant) => {
             const nextWater = waterByPlant.get(plant._id);
@@ -431,6 +505,7 @@ export function PlantsPageContent() {
             </p>
           </Link>
         </div>
+        )}
       </div>
 
       <footer className="border-t border-stone-200/60 bg-white/60 px-6 py-6 lg:px-10">

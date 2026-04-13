@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
         { name: rx },
         { species: rx },
         { location: rx },
+        { notes: rx },
       ];
     }
     const skip = (page - 1) * limit;

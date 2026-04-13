@@ -80,11 +80,11 @@ export function PlantOverviewTab() {
 
   return (
     <>
-      <section className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 lg:gap-x-12">
-        <div>
+      <section className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-10 lg:gap-x-12">
+        <div className="min-w-0">
           <Link
             href={`/plants/${plantId}/gallery`}
-            className="group relative block aspect-[3/4] max-h-[520px] overflow-hidden rounded-[1.5rem] bg-stone-200 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] ring-1 ring-stone-200/60"
+            className="group relative block aspect-video w-full overflow-hidden rounded-[1.5rem] bg-stone-200 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] ring-1 ring-stone-200/60"
           >
             {imgSrc ? (
               plant.imageUrl?.startsWith("/api/plants/") ? (
@@ -100,7 +100,7 @@ export function PlantOverviewTab() {
                   alt=""
                   fill
                   className="object-cover transition group-hover:opacity-95"
-                  sizes="(max-width: 1024px) 100vw, 45vw"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                 />
               )
             ) : (
@@ -117,7 +117,7 @@ export function PlantOverviewTab() {
           </Link>
         </div>
 
-        <div className="mt-8 flex flex-col justify-center lg:mt-0">
+        <div className="mt-6 flex flex-col justify-start lg:mt-0 lg:pl-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">
             <span className="uppercase">{archiveLabel}</span>
           </p>

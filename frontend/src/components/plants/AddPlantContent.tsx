@@ -1,11 +1,12 @@
 "use client";
 
-import { Bell, Camera, Search, Sprout } from "lucide-react";
+import { Bell, Camera, Sprout } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "@/lib/api";
+import { PlantSearchCombobox } from "@/components/plants/PlantSearchCombobox";
 
 type SafeUser = {
   _id: string;
@@ -165,18 +166,12 @@ export function AddPlantContent() {
     <div className="min-h-full bg-[#FAF9F6] pb-16">
       <header className="flex flex-col gap-4 border-b border-stone-200/60 bg-[#FAF9F6]/95 px-6 py-5 backdrop-blur-sm lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-6">
         <div className="relative max-w-xl flex-1">
-          <Search
-            className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          <input
-            type="search"
-            placeholder="Search your conservatory..."
+          <PlantSearchCombobox
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-full border-0 bg-[#E8E6E0] py-3.5 pl-11 pr-5 text-sm text-ink placeholder:text-muted/70 focus:bg-white focus:ring-2 focus:ring-olive/25"
-            aria-label="Search conservatory"
+            onChange={setSearch}
+            placeholder="Search your conservatory…"
+            inputClassName="bg-[#E8E6E0] focus:bg-white focus:ring-2 focus:ring-olive/25"
+            debounceMs={280}
           />
         </div>
         <div className="flex items-center gap-4 lg:gap-5">
