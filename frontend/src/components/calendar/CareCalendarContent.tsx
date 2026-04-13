@@ -3,23 +3,41 @@
 import {
   BarChart3,
   Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Droplets,
   Leaf,
+  ListTodo,
   Sprout,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiGet, apiPatch } from "@/lib/api";
 
 type ViewMode = "month" | "week";
 
-type TaskKind = "water" | "nutrient" | "soil";
+type TaskKind = "water" | "nutrient" | "soil" | "custom";
 
-type CalendarTask = {
+type DayMarks = {
+  scheduledTypes: string[];
+  completedTypes: string[];
+};
+
+type GridTaskDot = {
   id: string;
   kind: TaskKind;
-  title: string;
+  variant: "scheduled" | "completed";
+};
+
+type ApiCalendarTaskRow = {
+  _id: string;
+  type: string;
+  displayTitle: string;
   plantLine: string;
+  status: string;
+  dueAt: string;
+  completedAt: string | null;
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -73,78 +91,50 @@ function formatSelectedHeading(key: string): string {
   return `${weekday}, ${pad2(d)}`;
 }
 
-function buildDemoTasksForMonth(y: number, m: number): Record<string, CalendarTask[]> {
-  const k = (d: number) => toKey(y, m, d);
-  return {
-    [k(2)]: [
-      {
-        id: `${y}-${m}-2-w`,
-        kind: "water",
-        title: "Morning mist",
-        plantLine: "Snake plant • Light spray",
-      },
-    ],
-    [k(4)]: [
-      {
-        id: `${y}-${m}-4-n`,
-        kind: "nutrient",
-        title: "Leaf feed",
-        plantLine: "Pothos • Diluted fertilizer",
-      },
-    ],
-    [k(7)]: [
-      {
-        id: `${y}-${m}-7-w`,
-        kind: "water",
-        title: "Hydration ritual",
-        plantLine: "Fiddle leaf fig • 500ml filtered",
-      },
-      {
-        id: `${y}-${m}-7-n`,
-        kind: "nutrient",
-        title: "Nutrient infusion",
-        plantLine: "Swiss cheese plant • 10-10-10 mix",
-      },
-      {
-        id: `${y}-${m}-7-s`,
-        kind: "soil",
-        title: "Relocation & soil check",
-        plantLine: "Jade plant • Check root health",
-      },
-    ],
-    [k(10)]: [
-      {
-        id: `${y}-${m}-10-w`,
-        kind: "water",
-        title: "Deep water",
-        plantLine: "Rubber plant • Until drain",
-      },
-    ],
-    [k(14)]: [
-      {
-        id: `${y}-${m}-14-n`,
-        kind: "nutrient",
-        title: "Seasonal feed",
-        plantLine: "Monstera • Slow-release",
-      },
-    ],
-    [k(16)]: [
-      {
-        id: `${y}-${m}-16-w`,
-        kind: "water",
-        title: "Top-up",
-        plantLine: "Peace lily • Room-temp water",
-      },
-    ],
-  };
+function typeToKind(t: string): TaskKind {
+  if (t === "watering") return "water";
+  if (t === "fertilizing") return "nutrient";
+  if (t === "pruning") return "soil";
+  return "custom";
 }
 
-function CellTaskIcon({ kind, className }: { kind: TaskKind; className?: string }) {
+function marksToDots(key: string, marks?: DayMarks): GridTaskDot[] {
+  if (!marks) return [];
+  const out: GridTaskDot[] = [];
+  let i = 0;
+  for (const t of marks.scheduledTypes) {
+    out.push({
+      id: `${key}-s-${i}`,
+      kind: typeToKind(t),
+      variant: "scheduled",
+    });
+    i += 1;
+  }
+  for (const t of marks.completedTypes) {
+    out.push({
+      id: `${key}-c-${i}`,
+      kind: typeToKind(t),
+      variant: "completed",
+    });
+    i += 1;
+  }
+  return out;
+}
+
+function CellTaskIcon({
+  kind,
+  className,
+}: {
+  kind: TaskKind;
+  className?: string;
+}) {
   const cn = className ?? "h-3.5 w-3.5";
   if (kind === "water")
     return <Droplets className={cn} strokeWidth={2} aria-hidden />;
   if (kind === "nutrient")
     return <Leaf className={cn} strokeWidth={2} aria-hidden />;
+  if (kind === "custom")
+    return <ListTodo className={cn} strokeWidth={2} aria-hidden />;
   return <Sprout className={cn} strokeWidth={2} aria-hidden />;
 }
 
@@ -156,7 +146,12 @@ function TaskIconBadge({ kind }: { kind: TaskKind }) {
   );
 }
 
+function rowKind(type: string): TaskKind {
+  return typeToKind(type);
+}
+
 export function CareCalendarContent() {
+  const router = useRouter();
   const today = useMemo(() => {
     const n = new Date();
     return toKey(n.getFullYear(), n.getMonth(), n.getDate());
@@ -166,12 +161,90 @@ export function CareCalendarContent() {
   const [visibleY, setVisibleY] = useState(() => new Date().getFullYear());
   const [visibleM, setVisibleM] = useState(() => new Date().getMonth());
   const [selectedKey, setSelectedKey] = useState(today);
-  const [doneIds, setDoneIds] = useState<Set<string>>(() => new Set());
 
-  const tasksByDate = useMemo(
-    () => buildDemoTasksForMonth(visibleY, visibleM),
-    [visibleY, visibleM],
-  );
+  const [rangeMarks, setRangeMarks] = useState<Record<string, DayMarks>>({});
+  const [rangeLoading, setRangeLoading] = useState(true);
+  const [rangeError, setRangeError] = useState<string | null>(null);
+
+  const [scheduledRows, setScheduledRows] = useState<ApiCalendarTaskRow[]>([]);
+  const [completedRows, setCompletedRows] = useState<ApiCalendarTaskRow[]>([]);
+  const [dayLoading, setDayLoading] = useState(true);
+  const [dayError, setDayError] = useState<string | null>(null);
+
+  const [completingId, setCompletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await apiGet<{ _id: string }>("/api/auth/me");
+      if (cancelled) return;
+      if (!res.success || !res.data) {
+        router.push("/login");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  const loadRange = useCallback(async () => {
+    let from: string;
+    let to: string;
+    if (viewMode === "week") {
+      const { y, m, d } = parseKey(selectedKey);
+      const start = startOfWeekSunday(y, m, d);
+      const end = addDays(start, 6);
+      from = toKey(start.getFullYear(), start.getMonth(), start.getDate());
+      to = toKey(end.getFullYear(), end.getMonth(), end.getDate());
+    } else {
+      const first = `${visibleY}-${pad2(visibleM + 1)}-01`;
+      const lastD = new Date(visibleY, visibleM + 1, 0).getDate();
+      const last = `${visibleY}-${pad2(visibleM + 1)}-${pad2(lastD)}`;
+      from = first;
+      to = last;
+    }
+
+    setRangeLoading(true);
+    setRangeError(null);
+    const res = await apiGet<{
+      days: Record<string, DayMarks>;
+    }>(
+      `/api/tasks/calendar-range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+    );
+    setRangeLoading(false);
+    if (!res.success || !res.data) {
+      setRangeError(res.error || res.message || "Could not load calendar.");
+      setRangeMarks({});
+      return;
+    }
+    setRangeMarks(res.data.days ?? {});
+  }, [viewMode, visibleY, visibleM, selectedKey]);
+
+  const loadDay = useCallback(async () => {
+    setDayLoading(true);
+    setDayError(null);
+    const res = await apiGet<{
+      scheduled: ApiCalendarTaskRow[];
+      completed: ApiCalendarTaskRow[];
+    }>(`/api/tasks/calendar-day?date=${encodeURIComponent(selectedKey)}`);
+    setDayLoading(false);
+    if (!res.success || !res.data) {
+      setDayError(res.error || res.message || "Could not load this day.");
+      setScheduledRows([]);
+      setCompletedRows([]);
+      return;
+    }
+    setScheduledRows(res.data.scheduled ?? []);
+    setCompletedRows(res.data.completed ?? []);
+  }, [selectedKey]);
+
+  useEffect(() => {
+    void loadRange();
+  }, [loadRange]);
+
+  useEffect(() => {
+    void loadDay();
+  }, [loadDay]);
 
   const monthCells = useMemo(() => {
     const firstDow = new Date(visibleY, visibleM, 1).getDay();
@@ -209,22 +282,26 @@ export function CareCalendarContent() {
     });
   }, []);
 
-  const pendingForSelected = useMemo(() => {
-    const list = tasksByDate[selectedKey] ?? [];
-    return list.filter((t) => !doneIds.has(t.id));
-  }, [tasksByDate, selectedKey, doneIds]);
+  async function completeScheduledTask(id: string) {
+    setCompletingId(id);
+    try {
+      const res = await apiPatch<unknown>(`/api/tasks/${id}/complete`, {});
+      if (!res.success) {
+        setDayError(res.error || res.message || "Could not complete task.");
+        return;
+      }
+      await Promise.all([loadRange(), loadDay()]);
+    } finally {
+      setCompletingId(null);
+    }
+  }
 
-  const totalForSelected = tasksByDate[selectedKey]?.length ?? 0;
-
-  const markDone = (id: string) => {
-    setDoneIds((prev) => new Set(prev).add(id));
-  };
-
-  const efficiency = 92;
+  const scheduledCount = scheduledRows.length;
+  const completedCount = completedRows.length;
 
   return (
-    <div className="min-h-screen bg-care-canvas px-6 py-8 lg:px-10 lg:py-10">
-      <header className="mb-8">
+    <div className="flex h-full min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden bg-care-canvas px-6 py-6 lg:px-10 lg:py-8">
+      <header className="mb-4 shrink-0 lg:mb-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
           Monthly schedule
         </p>
@@ -233,9 +310,18 @@ export function CareCalendarContent() {
         </h1>
       </header>
 
-      <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
-        <section className="min-w-0 flex-1 rounded-[22px] bg-white p-5 shadow-soft sm:p-7">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {(rangeError || dayError) && (
+        <p
+          className="mb-4 shrink-0 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 lg:mb-6"
+          role="alert"
+        >
+          {rangeError || dayError}
+        </p>
+      )}
+
+      <div className="flex min-h-0 w-full max-w-none flex-1 flex-col gap-6 overflow-hidden xl:flex-row xl:items-stretch xl:gap-8">
+        <section className="flex max-h-[min(520px,50vh)] min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[22px] bg-white p-5 shadow-soft sm:p-7 xl:h-full xl:max-h-none xl:min-w-0 xl:shrink xl:flex-1">
+          <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-bold text-ink">
                 {formatMonthYear(visibleY, visibleM)}
@@ -290,7 +376,14 @@ export function CareCalendarContent() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-7 gap-y-1 text-center text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 sm:mt-6">
+          {rangeLoading ? (
+            <p className="py-8 text-center text-sm text-muted">
+              Loading calendar…
+            </p>
+          ) : null}
+
+          <div className="grid grid-cols-7 gap-y-1 text-center text-[10px] font-semibold uppercase tracking-wider text-muted">
             {WEEKDAYS.map((d) => (
               <div key={d} className="py-2">
                 {d}
@@ -305,7 +398,7 @@ export function CareCalendarContent() {
                   return <div key={`e-${idx}`} className="min-h-[88px]" />;
                 }
                 const key = toKey(visibleY, visibleM, day);
-                const tasks = tasksByDate[key] ?? [];
+                const dots = marksToDots(key, rangeMarks[key]);
                 const selected = key === selectedKey;
                 return (
                   <button
@@ -325,19 +418,28 @@ export function CareCalendarContent() {
                     >
                       {day}
                     </span>
-                    {tasks.length > 0 && (
+                    {dots.length > 0 && (
                       <div className="mt-auto flex flex-wrap justify-end gap-1 pt-1 text-forest">
-                        {tasks.slice(0, 4).map((t) => (
+                        {dots.slice(0, 4).map((dot) => (
                           <span
-                            key={t.id}
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-forest shadow-sm"
+                            key={dot.id}
+                            className={`flex h-6 w-6 items-center justify-center rounded-full shadow-sm ${
+                              dot.variant === "completed"
+                                ? "bg-white/60 text-forest/70 ring-1 ring-forest/20"
+                                : "bg-white/90 text-forest"
+                            }`}
+                            title={
+                              dot.variant === "completed"
+                                ? "Completed"
+                                : "Scheduled"
+                            }
                           >
-                            <CellTaskIcon kind={t.kind} className="h-3 w-3" />
+                            <CellTaskIcon kind={dot.kind} className="h-3 w-3" />
                           </span>
                         ))}
-                        {tasks.length > 4 && (
+                        {dots.length > 4 && (
                           <span className="text-[10px] font-bold text-muted">
-                            +{tasks.length - 4}
+                            +{dots.length - 4}
                           </span>
                         )}
                       </div>
@@ -353,7 +455,7 @@ export function CareCalendarContent() {
                 const m = dt.getMonth();
                 const d = dt.getDate();
                 const key = toKey(y, m, d);
-                const tasks = buildDemoTasksForMonth(y, m)[key] ?? [];
+                const dots = marksToDots(key, rangeMarks[key]);
                 const selected = key === selectedKey;
                 const inVisibleMonth = m === visibleM && y === visibleY;
                 return (
@@ -381,14 +483,18 @@ export function CareCalendarContent() {
                     >
                       {d}
                     </span>
-                    {tasks.length > 0 && (
+                    {dots.length > 0 && (
                       <div className="mt-auto flex flex-wrap justify-end gap-1 pt-1 text-forest">
-                        {tasks.slice(0, 4).map((t) => (
+                        {dots.slice(0, 4).map((dot) => (
                           <span
-                            key={t.id}
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 shadow-sm"
+                            key={dot.id}
+                            className={`flex h-6 w-6 items-center justify-center rounded-full shadow-sm ${
+                              dot.variant === "completed"
+                                ? "bg-white/60 text-forest/70 ring-1 ring-forest/20"
+                                : "bg-white/90 text-forest"
+                            }`}
                           >
-                            <CellTaskIcon kind={t.kind} className="h-3 w-3" />
+                            <CellTaskIcon kind={dot.kind} className="h-3 w-3" />
                           </span>
                         ))}
                       </div>
@@ -398,9 +504,11 @@ export function CareCalendarContent() {
               })}
             </div>
           )}
+          </div>
         </section>
 
-        <aside className="w-full shrink-0 space-y-6 xl:w-[380px]">
+        <aside className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden xl:h-full xl:min-w-0 xl:shrink xl:flex-1">
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overflow-x-hidden pr-1 pb-2">
           <div className="rounded-[22px] bg-forest px-6 py-6 text-white shadow-soft">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
               Selected day
@@ -410,53 +518,123 @@ export function CareCalendarContent() {
                 {formatSelectedHeading(selectedKey)}
               </p>
             </div>
-            <div className="mt-4 flex items-center gap-2 text-sm font-medium text-white/90">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
-                <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-white/90">
+              <span className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
+                  <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+                </span>
+                <span>
+                  {scheduledCount} open
+                </span>
               </span>
-              <span>
-                {totalForSelected}{" "}
-                {totalForSelected === 1 ? "task" : "tasks"} scheduled
-              </span>
+              <span className="text-white/50">·</span>
+              <span>{completedCount} done</span>
             </div>
           </div>
 
           <div>
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-              Pending tasks
+              Scheduled
             </p>
-            <ul className="space-y-3">
-              {pendingForSelected.length === 0 ? (
-                <li className="rounded-2xl border border-dashed border-black/10 bg-white/60 px-4 py-8 text-center text-sm text-muted">
-                  Nothing due on this day. Pick another date or add care
-                  plans from your plants.
-                </li>
-              ) : (
-                pendingForSelected.map((task) => (
-                  <li
-                    key={task.id}
-                    className="rounded-[18px] bg-white p-4 shadow-sm ring-1 ring-black/[0.04]"
-                  >
-                    <div className="flex gap-3">
-                      <TaskIconBadge kind={task.kind} />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold capitalize text-ink">
-                          {task.title}
-                        </p>
-                        <p className="mt-1 text-sm text-muted">{task.plantLine}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => markDone(task.id)}
-                      className="mt-4 text-left text-xs font-semibold uppercase tracking-wide text-forest transition hover:text-olive-dark"
-                    >
-                      Mark as done →
-                    </button>
+            {dayLoading ? (
+              <p className="rounded-2xl border border-dashed border-black/10 bg-white/60 px-4 py-8 text-center text-sm text-muted">
+                Loading tasks…
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {scheduledRows.length === 0 ? (
+                  <li className="rounded-2xl border border-dashed border-black/10 bg-white/60 px-4 py-8 text-center text-sm text-muted">
+                    No scheduled tasks on this day.
                   </li>
-                ))
-              )}
-            </ul>
+                ) : (
+                  scheduledRows.map((task) => {
+                    const busy = completingId === task._id;
+                    return (
+                      <li
+                        key={task._id}
+                        className="rounded-[18px] bg-white p-4 shadow-sm ring-1 ring-black/[0.04]"
+                      >
+                        <div className="flex gap-3">
+                          <TaskIconBadge kind={rowKind(task.type)} />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-ink">
+                              {task.displayTitle}
+                            </p>
+                            <p className="mt-1 text-sm text-muted">
+                              {task.plantLine}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void completeScheduledTask(task._id)}
+                          className="mt-4 text-left text-xs font-semibold uppercase tracking-wide text-forest transition hover:text-olive-dark disabled:opacity-40"
+                        >
+                          {busy ? "Saving…" : "Mark as done →"}
+                        </button>
+                      </li>
+                    );
+                  })
+                )}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+              Completed
+            </p>
+            {dayLoading ? (
+              <p className="rounded-2xl border border-dashed border-black/10 bg-white/60 px-4 py-8 text-center text-sm text-muted">
+                Loading…
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {completedRows.length === 0 ? (
+                  <li className="rounded-2xl border border-dashed border-black/10 bg-white/60 px-4 py-8 text-center text-sm text-muted">
+                    Nothing completed on this day yet.
+                  </li>
+                ) : (
+                  completedRows.map((task) => (
+                    <li
+                      key={task._id}
+                      className="rounded-[18px] bg-white p-4 opacity-95 shadow-sm ring-1 ring-black/[0.04]"
+                    >
+                      <div className="flex gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage/40 text-forest">
+                          <CheckCircle2
+                            className="h-4 w-4"
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-ink">
+                            {task.displayTitle}
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            {task.plantLine}
+                          </p>
+                          {task.completedAt ? (
+                            <p className="mt-2 text-xs text-muted">
+                              Logged{" "}
+                              {new Date(task.completedAt).toLocaleTimeString(
+                                "en-US",
+                                {
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+            )}
           </div>
 
           <div className="rounded-[22px] bg-[#EFEAE0] px-5 py-5 shadow-sm ring-1 ring-black/[0.04]">
@@ -468,20 +646,11 @@ export function CareCalendarContent() {
                 aria-hidden
               />
             </div>
-            <div className="mt-5 flex items-center justify-between text-sm">
-              <span className="text-muted">Efficiency this week</span>
-              <span className="text-lg font-bold text-forest">{efficiency}%</span>
-            </div>
-            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/70">
-              <div
-                className="h-full rounded-full bg-forest"
-                style={{ width: `${efficiency}%` }}
-              />
-            </div>
-            <p className="mt-4 text-xs italic leading-relaxed text-muted">
-              You&apos;ve missed only 1 watering session in the last 14 days.
-              Keep it up!
+            <p className="mt-4 text-xs leading-relaxed text-muted">
+              Dots on the grid: solid = still to do, faded ring = completed that
+              day. Pick a date to see the full list.
             </p>
+          </div>
           </div>
         </aside>
       </div>

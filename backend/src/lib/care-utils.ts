@@ -127,6 +127,33 @@ export function userDueDateToStartUtc(
   return fromZonedTime(localStart, timezone);
 }
 
+/** Next calendar date after `ymd` (YYYY-MM-DD), using UTC civil arithmetic. */
+export function calendarNextYmd(ymd: string): string {
+  const parts = ymd.split("-").map((x) => Number(x));
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+    throw new Error("Invalid ymd");
+  }
+  const [y, mo, d] = parts as [number, number, number];
+  const ud = new Date(Date.UTC(y, mo - 1, d));
+  ud.setUTCDate(ud.getUTCDate() + 1);
+  const yy = ud.getUTCFullYear();
+  const mm = ud.getUTCMonth() + 1;
+  const dd = ud.getUTCDate();
+  const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+  return `${yy}-${pad(mm)}-${pad(dd)}`;
+}
+
+/** Inclusive UTC bounds for one user-local calendar day. */
+export function getUserCalendarDayBoundsUtc(
+  dueDate: string,
+  timezone: string
+): { startUtc: Date; endUtc: Date } {
+  const startUtc = userDueDateToStartUtc(dueDate, timezone);
+  const nextStart = userDueDateToStartUtc(calendarNextYmd(dueDate), timezone);
+  const endUtc = new Date(nextStart.getTime() - 1);
+  return { startUtc, endUtc };
+}
+
 /**
  * Creates a pending task if none exists for this care plan + dueAt (exact match).
  */

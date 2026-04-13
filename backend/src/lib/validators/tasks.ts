@@ -68,3 +68,28 @@ export const createCustomTaskBodySchema = z
     notes: z.string().trim().max(5000).optional(),
   })
   .strict();
+
+export const calendarDayQuerySchema = z.object({
+  date: dueDateStringSchema,
+});
+
+export const calendarRangeQuerySchema = z
+  .object({
+    from: dueDateStringSchema,
+    to: dueDateStringSchema,
+  })
+  .refine((q) => q.from <= q.to, {
+    message: "`from` must be on or before `to`",
+    path: ["to"],
+  })
+  .refine((q) => {
+    const [fy, fm, fd] = q.from.split("-").map(Number);
+    const [ty, tm, td] = q.to.split("-").map(Number);
+    const a = new Date(Date.UTC(fy, fm - 1, fd));
+    const b = new Date(Date.UTC(ty, tm - 1, td));
+    const days = (b.getTime() - a.getTime()) / 86400000;
+    return days <= 93;
+  }, {
+    message: "Date range cannot exceed 94 days",
+    path: ["to"],
+  });
