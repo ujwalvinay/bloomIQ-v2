@@ -10,8 +10,9 @@ import Task from "@/models/Task";
 import { serializeTask } from "@/lib/serializers";
 
 /**
- * Due today uses the authenticated user's `timezone` (IANA), e.g. Asia/Kolkata.
- * Overdue = pending tasks with dueAt before the start of the user's local "today".
+ * Pending tasks that are actionable now: due on the user's local calendar day
+ * (today) or earlier (overdue). Future-dated tasks are omitted so completed
+ * care can roll to the next due date without reappearing until that day.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,8 @@ export async function GET(request: NextRequest) {
     if (!("user" in auth)) return auth;
 
     const timezone = auth.user.timezone;
-    const { startUtc, endUtc } = getZonedDayBounds(timezone);
+    const now = new Date();
+    const { startUtc, endUtc } = getZonedDayBounds(timezone, now);
     const userId = new Types.ObjectId(auth.user._id);
 
     const [dueToday, overdue] = await Promise.all([

@@ -17,18 +17,20 @@ const taskSchema = new Schema(
     carePlanId: {
       type: Schema.Types.ObjectId,
       ref: "CarePlan",
-      required: true,
+      required: false,
+      default: undefined,
       index: true,
     },
     type: {
       type: String,
-      enum: ["watering", "fertilizing", "pruning"],
+      enum: ["watering", "fertilizing", "pruning", "custom"],
       required: true,
     },
+    title: { type: String, trim: true, maxlength: 200 },
     dueAt: { type: Date, required: true, index: true },
     status: {
       type: String,
-      enum: ["pending", "done", "snoozed", "skipped"],
+      enum: ["pending", "completed", "done", "snoozed", "skipped"],
       default: "pending",
     },
     completedAt: { type: Date, default: null },
@@ -44,7 +46,10 @@ taskSchema.index(
   { carePlanId: 1, dueAt: 1 },
   {
     unique: true,
-    partialFilterExpression: { status: "pending" },
+    partialFilterExpression: {
+      status: "pending",
+      type: { $in: ["watering", "fertilizing", "pruning"] },
+    },
   }
 );
 

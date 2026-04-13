@@ -6,7 +6,7 @@ import {
   startOfDay,
   startOfWeek,
 } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import type { ClientSession, Types } from "mongoose";
 import Task from "@/models/Task";
 import type { ActivityAction, CarePlanType } from "@/types/plant";
@@ -95,6 +95,36 @@ export function computeSnoozeUntilFromDays(
   const zoned = toZonedTime(referenceUtc, timezone);
   const targetLocal = startOfDay(addDays(zoned, snoozeDays));
   return fromZonedTime(targetLocal, timezone);
+}
+
+/**
+ * Interprets `dueDate` as YYYY-MM-DD on the user's local calendar (IANA `timezone`)
+ * and returns the UTC instant for the start of that day in that zone.
+ */
+export function userDueDateToStartUtc(
+  dueDate: string,
+  timezone: string
+): Date {
+  const parts = dueDate.split("-").map((x) => Number(x));
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+    throw new Error("Invalid dueDate");
+  }
+  const [y, mo, d] = parts as [number, number, number];
+  let probe = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0));
+  for (let i = 0; i < 5; i++) {
+    if (formatInTimeZone(probe, timezone, "yyyy-MM-dd") === dueDate) {
+      const zoned = toZonedTime(probe, timezone);
+      const localStart = startOfDay(zoned);
+      return fromZonedTime(localStart, timezone);
+    }
+    const seen = formatInTimeZone(probe, timezone, "yyyy-MM-dd");
+    probe = new Date(
+      probe.getTime() + (seen.localeCompare(dueDate) < 0 ? 24 : -24) * 3600000
+    );
+  }
+  const zoned = toZonedTime(new Date(Date.UTC(y, mo - 1, d, 12, 0, 0)), timezone);
+  const localStart = startOfDay(zoned);
+  return fromZonedTime(localStart, timezone);
 }
 
 /**

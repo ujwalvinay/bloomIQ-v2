@@ -161,6 +161,12 @@ function milestoneFromActivity(
           : "Pruning logged to shape healthy structure.",
         time,
       };
+    case "custom_task_done":
+      return {
+        title: "Custom task completed",
+        body: a.notes?.trim() || `Checked off for ${name}.`,
+        time,
+      };
     default:
       return {
         title: `Update for ${name}`,

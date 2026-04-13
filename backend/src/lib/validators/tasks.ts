@@ -1,12 +1,18 @@
 import { z } from "zod";
 import { objectIdParamSchema, paginationQuerySchema } from "./common";
 
-const taskStatusEnum = z.enum(["pending", "done", "snoozed", "skipped"]);
-const careTypeEnum = z.enum(["watering", "fertilizing", "pruning"]);
+const taskStatusEnum = z.enum([
+  "pending",
+  "completed",
+  "done",
+  "snoozed",
+  "skipped",
+]);
+const taskTypeEnum = z.enum(["watering", "fertilizing", "pruning", "custom"]);
 
 export const tasksListQuerySchema = paginationQuerySchema.extend({
   status: taskStatusEnum.optional(),
-  type: careTypeEnum.optional(),
+  type: taskTypeEnum.optional(),
   plantId: objectIdParamSchema.optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
@@ -28,6 +34,7 @@ const activityActionEnum = z.enum([
   "note_added",
   "task_skipped",
   "task_snoozed",
+  "custom_task_done",
 ]);
 
 export const createActivityBodySchema = z.object({
@@ -46,5 +53,18 @@ export const activitiesListQuerySchema = paginationQuerySchema.extend({
 export const taskNotesBodySchema = z
   .object({
     notes: z.string().max(5000).optional(),
+  })
+  .strict();
+
+const dueDateStringSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+
+export const createCustomTaskBodySchema = z
+  .object({
+    plantId: objectIdParamSchema,
+    title: z.string().trim().min(1).max(200),
+    dueDate: dueDateStringSchema,
+    notes: z.string().trim().max(5000).optional(),
   })
   .strict();

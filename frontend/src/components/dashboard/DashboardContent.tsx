@@ -2,20 +2,21 @@
 
 import {
   Bell,
-  CheckCircle2,
   Circle,
   Droplets,
   Leaf,
+  ListTodo,
   Plus,
   Search,
   Sprout,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { absoluteApiUrl } from "@/lib/backend-origin";
-import { apiGet, apiPatch, type ApiEnvelope } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, type ApiEnvelope } from "@/lib/api";
 
 type SafeUser = {
   _id: string;
@@ -51,13 +52,18 @@ type CarePlan = {
   isActive: boolean;
 };
 
+type TaskDueSlot = "overdue" | "today";
+
 type TaskRow = {
   _id: string;
   plantId: string;
+  carePlanId?: string | null;
   type: string;
+  title?: string;
   dueAt: string;
   status: string;
   overdue: boolean;
+  dueSlot: TaskDueSlot;
 };
 
 function initials(name: string): string {
@@ -74,19 +80,43 @@ function careVerb(type: string): string {
   return "Care for";
 }
 
-function taskTitle(type: string, plantName: string): string {
+function taskTitle(type: string, plantName: string, customTitle?: string): string {
+  if (type === "custom") {
+    const t = customTitle?.trim();
+    return t && t.length > 0 ? t : "Custom task";
+  }
   const v = careVerb(type);
   const plant = plantName || "plant";
   if (type === "watering") return `${v} the ${plant}`;
   return `${v} ${plant}`;
 }
 
-function formatDueLine(plant: Plant | undefined, overdue: boolean): string {
+function formatDueLine(
+  plant: Plant | undefined,
+  slot: TaskDueSlot,
+  kind: "care" | "custom"
+): string {
   const loc = plant?.location?.trim();
-  if (overdue) {
+  const nm = plant?.name?.trim();
+  const when = slot === "overdue" ? "Overdue" : "Due today";
+  if (kind === "custom") {
+    if (nm && loc) return `${nm} • ${loc} • ${when}`;
+    if (nm) return `${nm} • ${when}`;
+    return when;
+  }
+  if (slot === "overdue") {
     return loc ? `${loc} • Overdue` : "Overdue";
   }
   return loc ? `${loc} • Due today` : "Due today";
+}
+
+function localTodayYmd(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+  return `${y}-${pad(m)}-${pad(day)}`;
 }
 
 function daysUntilNextWater(nextDueIso: string): number {
@@ -118,6 +148,8 @@ type TaskIconProps = { type: string; className?: string };
 
 function TaskTypeIcon({ type, className }: TaskIconProps) {
   const cn = className ?? "h-5 w-5";
+  if (type === "custom")
+    return <ListTodo className={cn} strokeWidth={1.75} aria-hidden />;
   if (type === "watering") return <Droplets className={cn} strokeWidth={1.75} aria-hidden />;
   if (type === "fertilizing")
     return <Sprout className={cn} strokeWidth={1.75} aria-hidden />;
@@ -135,6 +167,15 @@ export function DashboardContent() {
   const [waterPlans, setWaterPlans] = useState<CarePlan[]>([]);
   const [search, setSearch] = useState("");
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const [addTitle, setAddTitle] = useState("");
+  const [addPlantId, setAddPlantId] = useState("");
+  const [addDueDate, setAddDueDate] = useState(localTodayYmd);
+  const [addNotes, setAddNotes] = useState("");
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [addFormError, setAddFormError] = useState<string | null>(null);
+  const addTitleRef = useRef<HTMLInputElement>(null);
+  const [careLoggedNotice, setCareLoggedNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -148,17 +189,18 @@ export function DashboardContent() {
       ApiEnvelope<SafeUser>,
       ApiEnvelope<DashboardSummary>,
       ApiEnvelope<{
-        dueToday: TaskRow[];
-        overdue: TaskRow[];
+        dueToday: Omit<TaskRow, "overdue" | "dueSlot">[];
+        overdue: Omit<TaskRow, "overdue" | "dueSlot">[];
       }>,
       ApiEnvelope<{ items: Plant[] }>,
       ApiEnvelope<CarePlan[]>,
     ] = await Promise.all([
       apiGet<SafeUser>("/api/auth/me"),
       apiGet<DashboardSummary>("/api/dashboard/summary"),
-      apiGet<{ dueToday: TaskRow[]; overdue: TaskRow[] }>(
-        "/api/tasks/due-today"
-      ),
+      apiGet<{
+        dueToday: Omit<TaskRow, "overdue" | "dueSlot">[];
+        overdue: Omit<TaskRow, "overdue" | "dueSlot">[];
+      }>("/api/tasks/due-today"),
       apiGet<{ items: Plant[] }>("/api/plants?limit=20&page=1"),
       apiGet<CarePlan[]>("/api/care-plans?isActive=true&type=watering"),
     ]);
@@ -198,10 +240,12 @@ export function DashboardContent() {
     const overdueRows = (dueRes.data.overdue ?? []).map((t) => ({
       ...t,
       overdue: true,
+      dueSlot: "overdue" as const,
     }));
     const todayRows = (dueRes.data.dueToday ?? []).map((t) => ({
       ...t,
       overdue: false,
+      dueSlot: "today" as const,
     }));
     setTasks([...overdueRows, ...todayRows]);
     setPlants(plantsRes.data.items);
@@ -228,13 +272,16 @@ export function DashboardContent() {
   }, [waterPlans]);
 
   const filteredTasks = useMemo(() => {
+    const open = tasks.filter((t) => t.status === "pending");
     const q = search.trim().toLowerCase();
-    if (!q) return tasks;
-    return tasks.filter((t) => {
+    if (!q) return open;
+    return open.filter((t) => {
       const p = plantById.get(t.plantId);
-      const title = taskTitle(t.type, p?.name ?? "").toLowerCase();
+      const title = taskTitle(t.type, p?.name ?? "", t.title).toLowerCase();
+      const custom = t.title?.toLowerCase().includes(q) ?? false;
       return (
         title.includes(q) ||
+        custom ||
         (p?.location?.toLowerCase().includes(q) ?? false) ||
         (p?.name?.toLowerCase().includes(q) ?? false)
       );
@@ -263,14 +310,92 @@ export function DashboardContent() {
   async function completeTask(id: string) {
     setCompletingId(id);
     try {
-      const res = await apiPatch<unknown>(`/api/tasks/${id}/complete`, {});
-      if (!res.success) {
+      const res = await apiPatch<{
+        type: string;
+        nextScheduledDueAt?: string | null;
+      }>(`/api/tasks/${id}/complete`, {});
+      if (!res.success || !res.data) {
         setError(res.error || res.message);
         return;
       }
+      const { type, nextScheduledDueAt } = res.data;
+      setTasks((prev) => prev.filter((t) => t._id !== id));
       await load();
+      if (type !== "custom") {
+        if (nextScheduledDueAt) {
+          const when = new Date(nextScheduledDueAt).toLocaleDateString(
+            "en-US",
+            { month: "short", day: "numeric" }
+          );
+          setCareLoggedNotice(
+            `Care logged. Next round is due ${when}. It will show here again on that day (or earlier if it becomes overdue).`
+          );
+        } else {
+          setCareLoggedNotice(
+            "Care logged. Your list was refreshed. If this plant has no active schedule, only the log was updated."
+          );
+        }
+        window.setTimeout(() => setCareLoggedNotice(null), 10000);
+      }
     } finally {
       setCompletingId(null);
+    }
+  }
+
+  const openAddTaskModal = useCallback(() => {
+    const first = plants.find((p) => p.status !== "archived")?._id ?? "";
+    setAddFormError(null);
+    setAddTitle("");
+    setAddNotes("");
+    setAddDueDate(localTodayYmd());
+    setAddPlantId(first);
+    setAddTaskOpen(true);
+  }, [plants]);
+
+  useEffect(() => {
+    if (!addTaskOpen) return;
+    const t = window.setTimeout(() => addTitleRef.current?.focus(), 50);
+    return () => window.clearTimeout(t);
+  }, [addTaskOpen]);
+
+  useEffect(() => {
+    if (!addTaskOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setAddTaskOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [addTaskOpen]);
+
+  async function submitCustomTask() {
+    const title = addTitle.trim();
+    if (!title) {
+      setAddFormError("Give this task a short title.");
+      return;
+    }
+    if (!addPlantId) {
+      setAddFormError("Add a plant to your conservatory first, then you can attach tasks.");
+      return;
+    }
+    setAddFormError(null);
+    setAddSubmitting(true);
+    try {
+      const body: Record<string, unknown> = {
+        plantId: addPlantId,
+        title,
+        dueDate: addDueDate,
+      };
+      const notes = addNotes.trim();
+      if (notes) body.notes = notes;
+      const res = await apiPost<unknown>("/api/tasks", body);
+      if (!res.success) {
+        setAddFormError(res.error || res.message);
+        return;
+      }
+      setAddTaskOpen(false);
+      await load();
+    } finally {
+      setAddSubmitting(false);
     }
   }
 
@@ -397,7 +522,9 @@ export function DashboardContent() {
 
         <section className="mt-10 rounded-[1.5rem] bg-[#F3F1EC] p-6 shadow-sm ring-1 ring-stone-200/40 lg:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-ink">Today&apos;s Tasks</h2>
+            <h2 className="text-lg font-semibold text-ink">
+              Due today &amp; overdue
+            </h2>
             <span className="rounded-full bg-[#D9E8D1] px-4 py-1.5 text-xs font-semibold text-olive-cta">
               {new Intl.DateTimeFormat("en-US", {
                 month: "long",
@@ -405,15 +532,30 @@ export function DashboardContent() {
               }).format(new Date())}
             </span>
           </div>
+          {careLoggedNotice ? (
+            <p
+              className="mt-4 rounded-[1.25rem] bg-[#D9E8D1]/90 px-4 py-3 text-sm font-medium text-olive-cta ring-1 ring-olive-cta/20"
+              role="status"
+            >
+              {careLoggedNotice}
+            </p>
+          ) : null}
           <ul className="mt-6 flex flex-col gap-3">
             {filteredTasks.length === 0 ? (
               <li className="rounded-[1.25rem] bg-white px-5 py-8 text-center text-sm text-muted ring-1 ring-stone-200/60">
-                No tasks due today. Enjoy a quiet day in the conservatory.
+                Nothing due today or overdue. Enjoy a quiet day in the conservatory.
               </li>
             ) : (
               filteredTasks.map((t) => {
                 const p = plantById.get(t.plantId);
                 const busy = completingId === t._id;
+                const isCustom = t.type === "custom";
+                const headline = taskTitle(t.type, p?.name ?? "plant", t.title);
+                const dueLine = formatDueLine(
+                  p,
+                  t.dueSlot,
+                  isCustom ? "custom" : "care"
+                );
                 return (
                   <li
                     key={t._id}
@@ -424,27 +566,23 @@ export function DashboardContent() {
                       disabled={busy}
                       onClick={() => void completeTask(t._id)}
                       className="shrink-0 text-olive-cta transition hover:opacity-80 disabled:opacity-40"
-                      aria-label={`Mark complete: ${taskTitle(t.type, p?.name ?? "plant")}`}
+                      aria-label={`Mark completed: ${headline}`}
                     >
-                      {t.status === "done" ? (
-                        <CheckCircle2 className="h-6 w-6" strokeWidth={1.75} />
-                      ) : (
-                        <Circle className="h-6 w-6" strokeWidth={1.75} />
-                      )}
+                      <Circle className="h-6 w-6" strokeWidth={1.75} />
                     </button>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-ink">
-                        {taskTitle(t.type, p?.name ?? "plant")}
+                        {headline}
                       </p>
-                      <p className="text-sm text-muted">
-                        {formatDueLine(p, t.overdue)}
-                      </p>
+                      <p className="text-sm text-muted">{dueLine}</p>
                     </div>
                     <div
                       className={`shrink-0 rounded-full p-2 ${
                         t.type === "fertilizing"
                           ? "bg-stone-100 text-muted"
-                          : "bg-[#D9E8D1]/80 text-olive-cta"
+                          : isCustom
+                            ? "bg-amber-50 text-amber-800"
+                            : "bg-[#D9E8D1]/80 text-olive-cta"
                       }`}
                     >
                       <TaskTypeIcon type={t.type} />
@@ -456,11 +594,132 @@ export function DashboardContent() {
           </ul>
           <button
             type="button"
+            onClick={openAddTaskModal}
             className="mt-5 flex w-full items-center justify-center rounded-[1.25rem] border-2 border-dashed border-stone-300/80 bg-transparent py-4 text-sm font-medium text-muted transition hover:border-stone-400 hover:text-ink"
           >
             + Add Custom Task
           </button>
         </section>
+
+        {addTaskOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+            role="presentation"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setAddTaskOpen(false);
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-custom-task-title"
+              className="w-full max-w-md rounded-[1.25rem] bg-white p-6 shadow-lg ring-1 ring-stone-200/80"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h3
+                  id="add-custom-task-title"
+                  className="text-lg font-semibold text-ink"
+                >
+                  Add custom task
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setAddTaskOpen(false)}
+                  className="rounded-lg p-1 text-muted transition hover:bg-stone-100 hover:text-ink"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" strokeWidth={1.75} />
+                </button>
+              </div>
+              <p className="mt-1 text-sm text-muted">
+                One-off reminders tied to a plant. They won&apos;t change your care schedules.
+              </p>
+
+              {addFormError ? (
+                <p className="mt-4 text-sm text-red-700" role="alert">
+                  {addFormError}
+                </p>
+              ) : null}
+
+              <label className="mt-5 block text-xs font-medium text-muted">
+                Title
+                <input
+                  ref={addTitleRef}
+                  type="text"
+                  value={addTitle}
+                  onChange={(e) => setAddTitle(e.target.value)}
+                  maxLength={200}
+                  placeholder="e.g. Rotate toward the window"
+                  className="mt-1.5 w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-ink outline-none ring-olive-cta/30 transition focus:ring-2"
+                />
+              </label>
+
+              <label className="mt-4 block text-xs font-medium text-muted">
+                Plant
+                <select
+                  value={addPlantId}
+                  onChange={(e) => setAddPlantId(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-ink outline-none ring-olive-cta/30 transition focus:ring-2"
+                >
+                  {plants.filter((p) => p.status !== "archived").length === 0 ? (
+                    <option value="">No plants yet</option>
+                  ) : (
+                    plants
+                      .filter((p) => p.status !== "archived")
+                      .map((p) => (
+                        <option key={p._id} value={p._id}>
+                          {p.name}
+                          {p.location ? ` — ${p.location}` : ""}
+                        </option>
+                      ))
+                  )}
+                </select>
+              </label>
+
+              <label className="mt-4 block text-xs font-medium text-muted">
+                Due date
+                <input
+                  type="date"
+                  value={addDueDate}
+                  onChange={(e) => setAddDueDate(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-ink outline-none ring-olive-cta/30 transition focus:ring-2"
+                />
+              </label>
+
+              <label className="mt-4 block text-xs font-medium text-muted">
+                Notes{" "}
+                <span className="font-normal text-stone-400">(optional)</span>
+                <textarea
+                  value={addNotes}
+                  onChange={(e) => setAddNotes(e.target.value)}
+                  rows={3}
+                  maxLength={5000}
+                  placeholder="Any extra context…"
+                  className="mt-1.5 w-full resize-none rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-ink outline-none ring-olive-cta/30 transition focus:ring-2"
+                />
+              </label>
+
+              <div className="mt-6 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAddTaskOpen(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted transition hover:bg-stone-100 hover:text-ink"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={addSubmitting}
+                  onClick={() => void submitCustomTask()}
+                  className="rounded-xl bg-olive-cta px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {addSubmitting ? "Saving…" : "Add task"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <section className="mt-10">
           <div className="flex flex-wrap items-center justify-between gap-3">

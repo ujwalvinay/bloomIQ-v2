@@ -62,12 +62,15 @@ export function serializeTask(doc: unknown) {
   const d = asRecord(doc);
   const completed = d.completedAt;
   const snoozed = d.snoozedUntil;
+  const cp = d.carePlanId;
   return {
     _id: String(d._id),
     userId: String(d.userId),
     plantId: String(d.plantId),
-    carePlanId: String(d.carePlanId),
+    carePlanId:
+      cp != null && String(cp) !== "" ? String(cp) : null,
     type: String(d.type),
+    title: d.title != null ? String(d.title) : undefined,
     dueAt: toIsoRequired(d.dueAt),
     status: String(d.status),
     completedAt:

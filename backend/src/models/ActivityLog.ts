@@ -28,6 +28,7 @@ const activityLogSchema = new Schema(
         "note_added",
         "task_skipped",
         "task_snoozed",
+        "custom_task_done",
       ],
       required: true,
     },

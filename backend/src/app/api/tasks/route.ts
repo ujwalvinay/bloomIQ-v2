@@ -6,11 +6,17 @@ import {
   errorResponse,
   formatZodError,
   handleServerError,
+  parseJsonBody,
   successResponse,
 } from "@/lib/api";
 import { requireAuth } from "@/lib/auth";
+import { userDueDateToStartUtc } from "@/lib/care-utils";
 import { connectToDatabase } from "@/lib/db";
-import { tasksListQuerySchema } from "@/lib/validators/tasks";
+import {
+  createCustomTaskBodySchema,
+  tasksListQuerySchema,
+} from "@/lib/validators/tasks";
+import Plant from "@/models/Plant";
 import Task from "@/models/Task";
 import { serializeTask } from "@/lib/serializers";
 
@@ -63,6 +69,58 @@ export async function GET(request: NextRequest) {
       total,
       totalPages: Math.ceil(total / limit) || 1,
     });
+  } catch (err) {
+    return handleServerError(err);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    await connectToDatabase();
+    const auth = await requireAuth(request);
+    if (!("user" in auth)) return auth;
+
+    const raw = await parseJsonBody<unknown>(request);
+    if (!raw.ok) {
+      return errorResponse("Invalid request", raw.error, 400);
+    }
+    const parsed = createCustomTaskBodySchema.safeParse(raw.data);
+    if (!parsed.success) {
+      return errorResponse(
+        "Validation failed",
+        formatZodError(parsed.error),
+        422
+      );
+    }
+
+    const { plantId, title, dueDate, notes } = parsed.data;
+    const userId = new Types.ObjectId(auth.user._id);
+    const plant = await Plant.findOne({
+      _id: new Types.ObjectId(plantId),
+      userId,
+    }).lean();
+    if (!plant) {
+      return errorResponse("Not found", "Plant not found", 404);
+    }
+
+    let dueAt: Date;
+    try {
+      dueAt = userDueDateToStartUtc(dueDate, auth.user.timezone);
+    } catch {
+      return errorResponse("Bad request", "Invalid due date", 400);
+    }
+
+    const task = await Task.create({
+      userId,
+      plantId: new Types.ObjectId(plantId),
+      type: "custom",
+      title,
+      dueAt,
+      status: "pending",
+      notes: notes?.trim() ? notes.trim() : undefined,
+    });
+
+    return successResponse("Task created", serializeTask(task.toObject()));
   } catch (err) {
     return handleServerError(err);
   }

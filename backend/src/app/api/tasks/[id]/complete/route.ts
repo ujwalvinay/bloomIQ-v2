@@ -61,12 +61,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }).session(session);
       if (!task) {
         await session.abortTransaction();
-        await session.endSession();
         return errorResponse("Not found", "Task not found", 404);
       }
       if (task.status !== "pending" && task.status !== "snoozed") {
         await session.abortTransaction();
-        await session.endSession();
         return errorResponse(
           "Bad request",
           "Only pending or snoozed tasks can be completed",
@@ -75,19 +73,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
 
       const now = new Date();
-      task.status = "done";
+      task.status = "completed";
       task.completedAt = now;
       task.snoozedUntil = null;
       if (notes !== undefined) task.notes = notes;
       await task.save({ session });
 
+      const isCustom = task.type === "custom";
       await ActivityLog.create(
         [
           {
             userId,
             plantId: task.plantId,
             taskId: task._id,
-            action: careTypeToCompletedActivity(task.type as CarePlanType),
+            action: isCustom
+              ? "custom_task_done"
+              : careTypeToCompletedActivity(task.type as CarePlanType),
             date: now,
             notes: notes ?? task.notes,
           },
@@ -95,24 +96,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         { session }
       );
 
-      const carePlan = await CarePlan.findOne({
-        _id: task.carePlanId,
-        userId,
-      }).session(session);
-      if (carePlan?.isActive) {
-        const nextDue = await advanceCarePlanAfterCompletion({
-          carePlan,
-          completedAt: now,
-          session,
-        });
-        await ensurePendingTask({
+      if (!isCustom) {
+        const carePlan = await CarePlan.findOne({
+          _id: task.carePlanId,
           userId,
-          plantId: task.plantId,
-          carePlanId: carePlan._id,
-          type: carePlan.type,
-          dueAt: nextDue,
-          session,
-        });
+        }).session(session);
+        if (carePlan?.isActive) {
+          const nextDue = await advanceCarePlanAfterCompletion({
+            carePlan,
+            completedAt: now,
+            session,
+          });
+          await ensurePendingTask({
+            userId,
+            plantId: task.plantId,
+            carePlanId: carePlan._id,
+            type: carePlan.type,
+            dueAt: nextDue,
+            session,
+          });
+        }
       }
 
       await session.commitTransaction();
@@ -130,7 +133,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (!updated) {
       return errorResponse("Not found", "Task not found", 404);
     }
-    return successResponse("Task completed", serializeTask(updated));
+
+    let nextScheduledDueAt: string | null = null;
+    const u = updated as {
+      type?: string;
+      carePlanId?: Types.ObjectId;
+    };
+    const ut = String(u.type ?? "");
+    if (ut !== "custom" && u.carePlanId) {
+      const cp = await CarePlan.findOne({
+        _id: u.carePlanId,
+        userId,
+      }).lean();
+      const next = cp && "nextDueAt" in cp ? cp.nextDueAt : null;
+      if (next) {
+        nextScheduledDueAt = new Date(next as Date).toISOString();
+      }
+    }
+
+    return successResponse("Task completed", {
+      ...serializeTask(updated),
+      nextScheduledDueAt,
+    });
   } catch (err) {
     return handleServerError(err);
   }

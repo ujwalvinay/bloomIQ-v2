@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       }),
       Task.countDocuments({
         userId,
-        status: "done",
+        status: { $in: ["completed", "done"] },
         completedAt: {
           $gte: weekStartUtc,
           $lte: weekEndUtc,
