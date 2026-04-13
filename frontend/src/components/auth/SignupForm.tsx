@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -48,6 +49,19 @@ export function SignupForm() {
   return (
     <div className="w-full max-w-xl rounded-[2rem] bg-white p-8 shadow-card sm:p-10 md:p-12">
       <div className="mb-8">
+        <Link
+          href="/"
+          className="mb-6 inline-block outline-none ring-olive/25 focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        >
+          <Image
+            src="/logo.png"
+            alt="BloomIQ"
+            width={200}
+            height={56}
+            className="h-24 w-auto max-w-[220px] object-contain"
+            priority
+          />
+        </Link>
         <h1 className="text-3xl font-semibold tracking-tight text-ink">
           Join BloomIQ
         </h1>

@@ -40,14 +40,6 @@ export default function LoginPage({ searchParams }: Props) {
       </section>
 
       <section className="flex flex-1 flex-col items-center justify-center bg-cream px-6 py-12 sm:px-10">
-        <div className="mb-8 w-full max-w-md lg:hidden">
-          <Link
-            href="/"
-            className="text-sm font-semibold tracking-wide text-olive"
-          >
-            BloomIQ
-          </Link>
-        </div>
         {registered ? (
           <p className="mb-4 w-full max-w-md rounded-full bg-olive/10 px-4 py-2 text-center text-sm text-olive-dark">
             Account created. Sign in to continue.

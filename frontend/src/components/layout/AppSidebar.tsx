@@ -10,6 +10,7 @@ import {
   Settings,
   Sprout,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -57,14 +58,19 @@ export function AppSidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-[280px] shrink-0 flex-col overflow-y-auto bg-sidebar-bg px-4 py-8">
-      <div className="px-3">
-        <p className="text-lg font-bold tracking-tight text-sidebar-text">
-          BloomIQ
-        </p>
-        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-text/55">
-          Botanical journal
-        </p>
-      </div>
+      <Link
+        href="/dashboard"
+        className="mx-3 block outline-none ring-sidebar-text/20 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-bg"
+      >
+        <Image
+          src="/logo.png"
+          alt="BloomIQ"
+          width={220}
+          height={124}
+          className="h-28 w-auto max-w-full object-contain object-left"
+          priority
+        />
+      </Link>
 
       <nav className="mt-10 flex flex-1 flex-col gap-1 overflow-y-auto">
         {nav.map(({ href, label, icon: Icon }) => {

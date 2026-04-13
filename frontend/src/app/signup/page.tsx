@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import { SignupForm } from "@/components/auth/SignupForm";
 
 export default function SignupPage() {
@@ -17,11 +16,6 @@ export default function SignupPage() {
             />
             <div className="absolute inset-0 bg-gradient-to-br from-olive/90 via-olive/70 to-olive-dark/85 mix-blend-multiply" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-            <div className="absolute left-0 top-0 p-8 xl:p-10">
-              <span className="text-sm font-semibold tracking-wide text-white/95">
-                BloomIQ
-              </span>
-            </div>
             <div className="absolute bottom-0 left-0 p-8 xl:p-10">
               <h2 className="max-w-sm text-3xl font-semibold leading-tight text-white xl:text-4xl">
                 Cultivating digital growth.
@@ -35,14 +29,6 @@ export default function SignupPage() {
 
           <section className="flex flex-1 flex-col justify-center bg-white p-6 sm:p-10 lg:w-1/2 lg:rounded-none">
             <div className="mx-auto w-full max-w-xl">
-              <div className="mb-6 lg:hidden">
-                <Link
-                  href="/"
-                  className="text-sm font-semibold tracking-wide text-olive"
-                >
-                  BloomIQ
-                </Link>
-              </div>
               <SignupForm />
             </div>
           </section>
