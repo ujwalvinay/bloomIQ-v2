@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { absoluteApiUrl } from "@/lib/backend-origin";
-import { apiGet, apiPost, type ApiEnvelope } from "@/lib/api";
+import { apiGet, apiPatch, type ApiEnvelope } from "@/lib/api";
 
 type SafeUser = {
   _id: string;
@@ -263,7 +263,7 @@ export function DashboardContent() {
   async function completeTask(id: string) {
     setCompletingId(id);
     try {
-      const res = await apiPost<unknown>(`/api/tasks/${id}/complete`, {});
+      const res = await apiPatch<unknown>(`/api/tasks/${id}/complete`, {});
       if (!res.success) {
         setError(res.error || res.message);
         return;
