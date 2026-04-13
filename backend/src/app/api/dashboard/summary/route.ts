@@ -9,7 +9,7 @@ import { connectToDatabase } from "@/lib/db";
 import ActivityLog from "@/models/ActivityLog";
 import Plant from "@/models/Plant";
 import Task from "@/models/Task";
-import { serializeActivity } from "@/lib/serializers";
+import { serializeActivitiesWithResolvedTaskTitles } from "@/lib/activity-response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,6 +63,11 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    const recentActivities = await serializeActivitiesWithResolvedTaskTitles(
+      recentActivityDocs,
+      userId
+    );
+
     return successResponse("Dashboard summary", {
       timezone,
       totalPlants,
@@ -72,7 +77,7 @@ export async function GET(request: NextRequest) {
       tasksDueToday,
       overdueTasks,
       completedThisWeek,
-      recentActivities: recentActivityDocs.map(serializeActivity),
+      recentActivities,
     });
   } catch (err) {
     return handleServerError(err);

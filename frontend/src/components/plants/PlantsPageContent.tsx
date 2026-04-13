@@ -406,7 +406,7 @@ export function PlantsPageContent() {
                       </span>
                     </div>
                     <Link
-                      href={`/plants/${plant._id}`}
+                      href={`/plants/${plant._id}/overview`}
                       className="flex h-10 w-10 items-center justify-center rounded-full bg-sage text-forest transition hover:bg-sage/80"
                       aria-label={`Open ${plant.name}`}
                     >

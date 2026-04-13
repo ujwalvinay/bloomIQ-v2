@@ -85,6 +85,7 @@ export function serializeTask(doc: unknown) {
 export function serializeActivity(doc: unknown) {
   const d = asRecord(doc);
   const tid = d.taskId;
+  const tt = d.taskTitle;
   return {
     _id: String(d._id),
     userId: String(d.userId),
@@ -96,6 +97,8 @@ export function serializeActivity(doc: unknown) {
     action: String(d.action),
     date: toIsoRequired(d.date),
     notes: d.notes != null ? String(d.notes) : undefined,
+    taskTitle:
+      tt != null && String(tt).trim() !== "" ? String(tt).trim() : undefined,
     createdAt: toIso(d.createdAt),
     updatedAt: toIso(d.updatedAt),
   };

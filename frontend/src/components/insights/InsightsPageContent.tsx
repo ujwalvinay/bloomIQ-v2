@@ -21,6 +21,7 @@ type ActivityRow = {
   action: string;
   date: string;
   notes?: string;
+  taskTitle?: string;
 };
 
 type DashboardSummary = {
@@ -161,12 +162,18 @@ function milestoneFromActivity(
           : "Pruning logged to shape healthy structure.",
         time,
       };
-    case "custom_task_done":
-      return {
-        title: "Custom task completed",
-        body: a.notes?.trim() || `Checked off for ${name}.`,
-        time,
-      };
+    case "custom_task_done": {
+      const title =
+        a.taskTitle?.trim() ||
+        a.notes?.split("\n")[0]?.trim().slice(0, 80) ||
+        "Custom task";
+      const extra = a.notes?.trim();
+      const body =
+        extra && extra !== title.trim()
+          ? extra
+          : `Checked off for ${name}.`;
+      return { title, body, time };
+    }
     default:
       return {
         title: `Update for ${name}`,

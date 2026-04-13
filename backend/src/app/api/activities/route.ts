@@ -18,6 +18,7 @@ import {
 import ActivityLog from "@/models/ActivityLog";
 import Plant from "@/models/Plant";
 import Task from "@/models/Task";
+import { serializeActivitiesWithResolvedTaskTitles } from "@/lib/activity-response";
 import { serializeActivity } from "@/lib/serializers";
 
 export async function GET(request: NextRequest) {
@@ -50,8 +51,12 @@ export async function GET(request: NextRequest) {
         .lean(),
       ActivityLog.countDocuments(filter),
     ]);
+    const serializedItems = await serializeActivitiesWithResolvedTaskTitles(
+      items,
+      userId
+    );
     return successResponse("Activities fetched", {
-      items: items.map(serializeActivity),
+      items: serializedItems,
       page,
       limit,
       total,

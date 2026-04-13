@@ -1,9 +1,9 @@
-import { PlantDetailContent } from "@/components/plants/PlantDetailContent";
+import { redirect } from "next/navigation";
 
-export default function PlantDetailPage({
+export default function PlantDetailIndexPage({
   params,
 }: {
   params: { id: string };
 }) {
-  return <PlantDetailContent plantId={params.id} />;
+  redirect(`/plants/${params.id}/overview`);
 }

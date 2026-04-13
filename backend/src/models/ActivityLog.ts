@@ -34,6 +34,8 @@ const activityLogSchema = new Schema(
     },
     date: { type: Date, required: true, default: () => new Date() },
     notes: { type: String, trim: true, maxlength: 5000 },
+    /** Snapshot of custom task title when action is custom_task_done */
+    taskTitle: { type: String, trim: true, maxlength: 200 },
   },
   { timestamps: true }
 );

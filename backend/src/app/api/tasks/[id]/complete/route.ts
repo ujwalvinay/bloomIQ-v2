@@ -91,6 +91,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               : careTypeToCompletedActivity(task.type as CarePlanType),
             date: now,
             notes: notes ?? task.notes,
+            taskTitle: isCustom
+              ? (typeof task.title === "string" ? task.title.trim() : "") ||
+                undefined
+              : undefined,
           },
         ],
         { session }
