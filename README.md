@@ -1,274 +1,186 @@
-# 🌱 BloomIQ
+<div align="center">
 
-## 📌 Overview
+# BloomIQ
 
-BloomIQ is a modern plant care tracking web application designed to help users manage and monitor their plants efficiently. It combines simple tracking features with AI-powered insights to improve plant health and user engagement.
+**Smart plant care for people who want thriving plants, not guesswork.**
 
----
+A full-stack web application for tracking plants, care plans, and tasks—with a calendar-first workflow, insights, and secure multi-user accounts.
 
-## 🎯 Goals
+[![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 
-* Help users track plant care activities
-* Provide reminders for watering, fertilizing, and pruning
-* Offer AI-based plant health insights
-* Deliver a clean, modern, portfolio-worthy UI/UX
+[Features](#-features) · [Architecture](#-architecture) · [Quick start](#-quick-start) · [Configuration](#-configuration)
 
----
-
-## 🚀 Core Features
-
-### 1. Plant Management
-
-* Add, edit, delete plants
-* Store plant details (name, type, location)
-* Upload plant images
-
-### 2. Care Tracking
-
-* Watering schedule
-* Fertilizing schedule
-* Pruning tracking
-* Custom notes per plant
-
-### 3. Reminders & Notifications
-
-* Daily reminders for plant care
-* Upcoming task alerts
-
-### 4. Dashboard
-
-* Overview of all plants
-* Tasks due today
-* Activity timeline
-
-### 5. Calendar View
-
-* Monthly view of plant care tasks
-* Task filtering by plant and activity
-
-### 6. AI Integration (Phase 2)
-
-* Upload plant image
-* Detect plant health issues
-* Provide suggestions (overwatering, sunlight issues, etc.)
-* Optional AI chat assistant
+</div>
 
 ---
 
-## 🧱 Tech Stack
+## Why BloomIQ?
 
-### Frontend
-
-* React / Next.js
-* Tailwind CSS
-* Component-based architecture
-
-### Backend
-
-* Node.js + Express
-* REST API
-
-### Database
-
-* MongoDB / PostgreSQL
-
-### Authentication
-
-* JWT-based authentication
-
-### AI Integration
-
-* Google Gemini API
+BloomIQ helps you **organize care** across many plants: scheduled tasks, due dates in your timezone, activity history, and a dashboard that surfaces what matters today. Built as a **separate API backend and customer-facing app**, it is easy to deploy, scale, and extend.
 
 ---
 
-## 🧩 System Architecture
+## Features
 
-### Client
-
-* UI components
-* State management
-* API integration
-
-### Server
-
-* REST API endpoints
-* Business logic
-* Authentication middleware
-
-### Database
-
-* Stores users, plants, schedules, and logs
-
-### AI Service
-
-* Image processing
-* Health analysis
+| Area | What you get |
+|------|----------------|
+| **Plants** | Add plants, photos, per-plant overview, gallery, care log, and history |
+| **Care & tasks** | Care plans, generated tasks, “due today,” and calendar views |
+| **Insights** | Trends and summaries to understand how your collection is doing |
+| **Account** | Sign up, sign in, profile settings, forgot / reset password (email-ready in production) |
+| **Security** | JWT-based auth, password hashing, refresh-friendly API design |
 
 ---
 
-## 📊 Data Models
+## Architecture
 
-### User
+```text
+BloomIQ/
+├── backend/          # Next.js API routes + MongoDB (default: http://localhost:3000)
+├── frontend/         # Next.js App Router UI (default: http://localhost:3001)
+└── README.md
+```
 
-* id
-* name
-* email
-* password
-
-### Plant
-
-* id
-* userId
-* name
-* type
-* location
-* image
-* createdAt
-
-### CareSchedule
-
-* id
-* plantId
-* wateringFrequency
-* fertilizingFrequency
-* pruningFrequency
-
-### ActivityLog
-
-* id
-* plantId
-* action (watered, fertilized, pruned)
-* date
-* notes
+The **frontend** proxies `/api/*` to the **backend** via `next.config` rewrites, so the browser talks to one origin in development while the services stay decoupled.
 
 ---
 
-## 📄 Pages & UI Structure
+## Prerequisites
 
-### 1. Dashboard
-
-* Overview cards
-* Today's tasks
-* Plant preview grid
-* Activity timeline
-
-### 2. My Plants
-
-* Plant grid
-* Filters and search
-
-### 3. Add Plant
-
-* Form with image upload
-
-### 4. Plant Detail
-
-* Plant info
-* Care schedule
-* Timeline
-
-### 5. Calendar
-
-* Monthly task view
-
-### 6. AI Health Analysis
-
-* Image upload
-* Results display
-
-### 7. Settings
-
-* Profile
-* Notifications
-
-### 8. Auth
-
-* Login / Signup
+- **Node.js** 20.x (LTS recommended)
+- **npm** (ships with Node)
+- **MongoDB** instance and connection string ([MongoDB Atlas](https://www.mongodb.com/cloud/atlas) works well)
 
 ---
 
-## 🛠️ API Endpoints (Sample)
+## Quick start
 
-### Auth
+### 1. Clone and install
 
-* POST /api/auth/signup
-* POST /api/auth/login
+```bash
+git clone <your-repo-url> BloomIQ
+cd BloomIQ
+```
 
-### Plants
+Install dependencies in **both** apps:
 
-* GET /api/plants
-* POST /api/plants
-* GET /api/plants/:id
-* PUT /api/plants/:id
-* DELETE /api/plants/:id
+```bash
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
+```
 
-### Activities
+### 2. Configure environment
 
-* POST /api/activities
-* GET /api/plants/:id/activities
+**Backend** — copy the example file and fill in values:
 
-### AI
+```bash
+cd backend
+cp .env.example .env
+```
 
-* POST /api/ai/analyze
+Required for a working API:
 
----
+- `MONGODB_URI` — MongoDB connection string  
+- `JWT_ACCESS_SECRET` — strong secret for access tokens  
+- `JWT_REFRESH_SECRET` — strong secret for refresh tokens (use a different value than access)  
 
-## 🗺️ Roadmap
+Optional / production:
 
-### Phase 1 (MVP)
+- `APP_ORIGIN` — frontend origin (e.g. `http://localhost:3001`) for password reset links  
+- `RESEND_API_KEY` & `MAIL_FROM` — [Resend](https://resend.com) for transactional email in production  
 
-* Plant CRUD
-* Care tracking
-* Dashboard
-* Basic reminders
+**Frontend** — optional override for where `/api` is proxied:
 
-### Phase 2
+```bash
+cd frontend
+cp .env.example .env.local
+```
 
-* AI image analysis
-* Smart suggestions
+Default `API_PROXY_TARGET` is `http://localhost:3000` (the backend).
 
-### Phase 3
+### 3. Seed demo data (optional)
 
-* UI/UX polish
-* Analytics
-* Advanced notifications
+From `backend/`:
 
----
+```bash
+npm run seed
+```
 
-## 🎨 Design Principles
+Creates a demo user (`demo@bloomiq.app` / `password123` per script defaults) and sample plants when not already present.
 
-* Minimal and clean UI
-* Nature-inspired colors
-* Card-based layout
-* Responsive design
+### 4. Run locally
 
----
+**Terminal A — API**
 
-## 🧠 Unique Selling Point
+```bash
+cd backend
+npm run dev
+```
 
-* AI-powered plant health insights
-* Plant timeline (activity history like a feed)
+**Terminal B — Web app**
 
----
+```bash
+cd frontend
+npm run dev
+```
 
-## ⚠️ Challenges
-
-* AI accuracy limitations
-* Notification scheduling
-* Image processing latency
-
----
-
-## 📌 Future Enhancements
-
-* Community features
-* Plant sharing
-* Advanced analytics
-* Mobile app version
+Open **[http://localhost:3001](http://localhost:3001)**. The UI expects the backend on port **3000** unless you change `API_PROXY_TARGET`.
 
 ---
 
-## 🏁 Conclusion
+## Scripts
 
-BloomIQ aims to be a smart, user-friendly plant care assistant that blends tracking with AI to enhance user experience and plant health management.
+| Location | Command | Purpose |
+|----------|---------|---------|
+| `backend/` | `npm run dev` | API + Next server (dev) |
+| `backend/` | `npm run build` / `npm start` | Production build & start |
+| `backend/` | `npm run seed` | Idempotent demo data |
+| `backend/` | `npm run lint` | Lint |
+| `frontend/` | `npm run dev` | Customer app (port **3001**) |
+| `frontend/` | `npm run build` / `npm start` | Production build & start |
+| `frontend/` | `npm run lint` | Lint |
+
+---
+
+## Configuration reference
+
+### Backend (`backend/.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGODB_URI` | Yes | Database connection string |
+| `JWT_ACCESS_SECRET` | Yes | Secret for signing access JWTs |
+| `JWT_REFRESH_SECRET` | Yes | Secret for refresh tokens |
+| `NODE_ENV` | Optional | `development` / `production` |
+| `APP_ORIGIN` | Recommended for resets | Frontend base URL |
+| `RESEND_API_KEY` | Production email | Resend API key |
+| `MAIL_FROM` | With Resend | Verified sender address |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `API_PROXY_TARGET` | `http://localhost:3000` | Backend base URL for `/api` rewrites |
+
+---
+
+## Tech stack
+
+- **Frontend:** Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide icons  
+- **Backend:** Next.js 14 API routes, Mongoose, Zod, bcrypt, JWT, date-fns / time zones  
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome. Please keep changes focused and match existing patterns in each package.
+
+---
+
+<div align="center">
+
+**BloomIQ** — calmer plant care, one task at a time.
+
+</div>

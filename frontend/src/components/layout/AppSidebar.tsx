@@ -92,17 +92,7 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="mt-6 rounded-2xl bg-sidebar-active/90 px-4 py-5 text-center">
-        <p className="text-sm font-medium leading-snug text-sidebar-text">
-          Keep growing your knowledge.
-        </p>
-        <button
-          type="button"
-          className="mt-4 w-full rounded-full bg-olive-cta py-2.5 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-olive-cta/90"
-        >
-          Upgrade to Pro
-        </button>
-      </div>
+      
 
       <div className="mt-6 flex flex-col gap-1 border-t border-sidebar-text/10 pt-6">
         <Link
