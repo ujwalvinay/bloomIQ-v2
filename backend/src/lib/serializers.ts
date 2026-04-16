@@ -16,6 +16,48 @@ function toIsoRequired(d: unknown): string {
   return new Date(String(d)).toISOString();
 }
 
+const CARE_GUIDE_KEYS = [
+  "watering",
+  "sunlight",
+  "fertilizer",
+  "temperature",
+] as const;
+
+export function serializeCareGuide(
+  raw: unknown
+):
+  | {
+      watering: string;
+      sunlight: string;
+      fertilizer: string;
+      temperature: string;
+    }
+  | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const g = raw as Record<string, unknown>;
+  const out: Partial<
+    Record<(typeof CARE_GUIDE_KEYS)[number], string>
+  > = {};
+  for (const k of CARE_GUIDE_KEYS) {
+    const v = g[k];
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  }
+  if (
+    out.watering &&
+    out.sunlight &&
+    out.fertilizer &&
+    out.temperature
+  ) {
+    return {
+      watering: out.watering,
+      sunlight: out.sunlight,
+      fertilizer: out.fertilizer,
+      temperature: out.temperature,
+    };
+  }
+  return undefined;
+}
+
 export function serializePlant(doc: unknown) {
   const d = asRecord(doc);
   const id = String(d._id);
@@ -34,6 +76,15 @@ export function serializePlant(doc: unknown) {
     imageUrl,
     notes: d.notes != null ? String(d.notes) : undefined,
     status: String(d.status),
+    lightLevel:
+      d.lightLevel != null && String(d.lightLevel).trim() !== ""
+        ? String(d.lightLevel)
+        : undefined,
+    careRequirements:
+      d.careRequirements != null && String(d.careRequirements).trim() !== ""
+        ? String(d.careRequirements)
+        : undefined,
+    careGuide: serializeCareGuide(d.careGuide),
     createdAt: toIso(d.createdAt),
     updatedAt: toIso(d.updatedAt),
   };

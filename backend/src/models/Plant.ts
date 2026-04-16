@@ -1,4 +1,15 @@
 import mongoose, { Schema } from "mongoose";
+import { PLANT_LIGHT_LEVELS } from "@/lib/gemini-plant-profile";
+
+const careGuideSchema = new Schema(
+  {
+    watering: { type: String, trim: true, maxlength: 2500 },
+    sunlight: { type: String, trim: true, maxlength: 2500 },
+    fertilizer: { type: String, trim: true, maxlength: 2500 },
+    temperature: { type: String, trim: true, maxlength: 2500 },
+  },
+  { _id: false }
+);
 
 const plantSchema = new Schema(
   {
@@ -11,6 +22,16 @@ const plantSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 200 },
     species: { type: String, trim: true, maxlength: 200 },
     location: { type: String, trim: true, maxlength: 200 },
+    /** Inferred at creation (Gemini); one of PLANT_LIGHT_LEVELS. */
+    lightLevel: {
+      type: String,
+      enum: [...PLANT_LIGHT_LEVELS],
+      default: undefined,
+    },
+    /** Legacy single-block AI text (older plants); prefer careGuide. */
+    careRequirements: { type: String, trim: true, maxlength: 8000 },
+    /** AI-generated care sections (Gemini). */
+    careGuide: { type: careGuideSchema, default: undefined },
     imageUrl: { type: String, trim: true, maxlength: 2000 },
     /** Raw bytes when the user uploads a portrait; not selected by default in queries. */
     imageData: { type: Buffer, select: false },

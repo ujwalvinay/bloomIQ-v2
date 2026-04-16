@@ -43,6 +43,14 @@ type Plant = {
   location?: string;
   imageUrl?: string;
   status: string;
+  lightLevel?: string;
+  careRequirements?: string;
+  careGuide?: {
+    watering: string;
+    sunlight: string;
+    fertilizer: string;
+    temperature: string;
+  };
 };
 
 type CarePlan = {

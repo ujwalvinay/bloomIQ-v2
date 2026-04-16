@@ -403,6 +403,11 @@ export function AddPlantContent() {
                 <p className="mt-4 text-center text-[11px] tracking-wide text-muted">
                   Step 1 of 1 • Vital statistics
                 </p>
+                <p className="mt-2 text-center text-[11px] leading-relaxed text-muted/90">
+                  With a Gemini API key on the server, we add light level plus AI
+                  sections for watering, sunlight, fertilizer, and temperature from
+                  your name, species, and room.
+                </p>
                 <p className="mt-3 text-center text-xs text-muted">
                   <Link href="/plants" className="font-medium text-olive hover:underline">
                     Cancel

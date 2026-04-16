@@ -1,7 +1,18 @@
 import { z } from "zod";
+import { PLANT_LIGHT_LEVELS } from "@/lib/gemini-plant-profile";
 import { paginationQuerySchema } from "./common";
 
 const plantStatusEnum = z.enum(["healthy", "needs_attention", "archived"]);
+const plantLightLevelEnum = z.enum(PLANT_LIGHT_LEVELS);
+
+const careGuidePatchSchema = z
+  .object({
+    watering: z.string().max(2500).optional(),
+    sunlight: z.string().max(2500).optional(),
+    fertilizer: z.string().max(2500).optional(),
+    temperature: z.string().max(2500).optional(),
+  })
+  .strict();
 
 export const createPlantBodySchema = z.object({
   name: z.string().min(1).max(200),
@@ -18,7 +29,13 @@ export const createPlantBodySchema = z.object({
   status: plantStatusEnum.optional(),
 });
 
-export const updatePlantBodySchema = createPlantBodySchema.partial();
+export const updatePlantBodySchema = createPlantBodySchema
+  .partial()
+  .extend({
+    lightLevel: plantLightLevelEnum.optional(),
+    careRequirements: z.string().max(8000).optional(),
+    careGuide: careGuidePatchSchema.optional(),
+  });
 
 export const plantsListQuerySchema = paginationQuerySchema.extend({
   search: z.string().max(200).optional(),

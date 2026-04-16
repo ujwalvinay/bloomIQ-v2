@@ -16,10 +16,11 @@ import { absoluteApiUrl } from "@/lib/backend-origin";
 import { usePlantDetail } from "../PlantDetailContext";
 import {
   careTips,
+  displayLightLevel,
   healthHeadline,
   healthSeries,
-  lightLevel,
   MONTHS,
+  parseCareGuideBullets,
   specimenCode,
   wateringSummary,
 } from "../plant-detail-shared";
@@ -175,7 +176,7 @@ export function PlantOverviewTab() {
                   Light level
                 </p>
                 <p className="mt-1 text-lg font-semibold text-ink">
-                  {lightLevel(plant.location)}
+                  {displayLightLevel(plant)}
                 </p>
               </div>
             </div>
@@ -217,45 +218,142 @@ export function PlantOverviewTab() {
       <section className="mt-12 space-y-8">
         <div>
           <h2 className="text-lg font-semibold text-ink">Care requirements</h2>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            {(
+          {(() => {
+            const g = plant.careGuide;
+            const hasStructuredAi =
+              Boolean(
+                g?.watering?.trim() &&
+                  g?.sunlight?.trim() &&
+                  g?.fertilizer?.trim() &&
+                  g?.temperature?.trim()
+              );
+
+            const careRows = (
               [
                 {
                   title: "Watering",
-                  body: tips.watering,
+                  body: hasStructuredAi
+                    ? g!.watering!.trim()
+                    : tips.watering,
                   icon: Droplets,
+                  fromAi: hasStructuredAi,
                 },
-                { title: "Sunlight", body: tips.sunlight, icon: Sun },
+                {
+                  title: "Sunlight",
+                  body: hasStructuredAi
+                    ? g!.sunlight!.trim()
+                    : tips.sunlight,
+                  icon: Sun,
+                  fromAi: hasStructuredAi,
+                },
                 {
                   title: "Fertilizer",
-                  body: tips.fertilizer,
+                  body: hasStructuredAi
+                    ? g!.fertilizer!.trim()
+                    : tips.fertilizer,
                   icon: Leaf,
+                  fromAi: hasStructuredAi,
                 },
                 {
                   title: "Temperature",
-                  body: tips.temperature,
+                  body: hasStructuredAi
+                    ? g!.temperature!.trim()
+                    : tips.temperature,
                   icon: Thermometer,
+                  fromAi: hasStructuredAi,
                 },
               ] as const
-            ).map(({ title, body, icon: Icon }) => (
-              <div
-                key={title}
-                className="rounded-[1.25rem] bg-white/80 p-5 shadow-sm ring-1 ring-stone-200/40"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-forest">
-                    <Icon className="h-5 w-5" strokeWidth={1.75} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-ink">{title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">
-                      {body}
-                    </p>
+            ).map(({ title, body, icon: Icon, fromAi }) => {
+              const bullets = fromAi ? parseCareGuideBullets(body) : [];
+              return (
+                <div
+                  key={title}
+                  className={`rounded-[1.25rem] bg-white/80 p-5 shadow-sm ring-1 ${
+                    fromAi ? "ring-forest/15" : "ring-stone-200/40"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-forest">
+                      <Icon className="h-5 w-5" strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold text-ink">{title}</h3>
+                        {fromAi ? (
+                          <span className="rounded-full bg-[#D9E8D1] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-olive-cta">
+                            AI
+                          </span>
+                        ) : null}
+                      </div>
+                      {fromAi && bullets.length > 0 ? (
+                        <ul className="mt-2 list-outside list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-muted marker:text-forest">
+                          {bullets.map((line, i) => (
+                            <li key={i} className="pl-0.5">
+                              {line}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-sm leading-relaxed text-muted">
+                          {body}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
+              );
+            });
+
+            if (hasStructuredAi) {
+              return (
+                <div className="mt-5 space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-olive">
+                    Personalized for this plant (Gemini)
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">{careRows}</div>
+                </div>
+              );
+            }
+
+            if (plant.careRequirements?.trim()) {
+              return (
+                <div className="mt-5 rounded-[1.25rem] bg-white/90 p-6 shadow-sm ring-1 ring-forest/10">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-olive">
+                    Personalized guide
+                  </p>
+                  <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-ink">
+                    {plant.careRequirements.trim()}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="mt-5 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">{careRows}</div>
+                <p className="text-xs leading-relaxed text-muted">
+                  These summaries are generic placeholders. Personalized watering,
+                  sunlight, fertilizer, and temperature text comes from{" "}
+                  <strong className="font-semibold text-ink/80">Google Gemini</strong>{" "}
+                  when <code className="rounded bg-stone-100 px-1 py-0.5 text-[11px]">GEMINI_API_KEY</code>{" "}
+                  is set in the{" "}
+                  <strong className="font-semibold text-ink/80">backend</strong>{" "}
+                  <code className="rounded bg-stone-100 px-1 py-0.5 text-[11px]">.env</code>{" "}
+                  (key from{" "}
+                  <a
+                    href="https://aistudio.google.com/apikey"
+                    className="font-medium text-olive underline"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Google AI Studio
+                  </a>
+                  ), and the API server on port 3000 has been restarted after you save{" "}
+                  <code className="rounded bg-stone-100 px-1 py-0.5 text-[11px]">.env</code>.
+                </p>
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
 
         <section>

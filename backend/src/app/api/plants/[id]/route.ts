@@ -75,10 +75,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const payload = { ...parsed.data };
     const imageB64 = payload.imageBase64;
     const imageMimeDeclared = payload.imageMimeType;
+    const careGuidePatch = payload.careGuide;
     delete payload.imageBase64;
     delete payload.imageMimeType;
+    delete payload.careGuide;
 
     const $set: Record<string, unknown> = { ...payload };
+
+    if (careGuidePatch && typeof careGuidePatch === "object") {
+      for (const key of [
+        "watering",
+        "sunlight",
+        "fertilizer",
+        "temperature",
+      ] as const) {
+        const v = careGuidePatch[key];
+        if (typeof v === "string") {
+          $set[`careGuide.${key}`] = v;
+        }
+      }
+    }
 
     if (typeof imageB64 === "string" && imageB64.length > 0) {
       let buf: Buffer;

@@ -8,6 +8,17 @@ export type Plant = {
   imageUrl?: string;
   notes?: string;
   status: string;
+  /** From API / Gemini: low | medium | bright_indirect | full_sun | unknown */
+  lightLevel?: string;
+  /** Legacy AI single block */
+  careRequirements?: string;
+  /** AI-generated care sections (all four when from Gemini) */
+  careGuide?: {
+    watering: string;
+    sunlight: string;
+    fertilizer: string;
+    temperature: string;
+  };
   createdAt?: string;
 };
 
@@ -63,7 +74,16 @@ export function specimenCode(plant: Plant): string {
   return `#${prefix}-${y}-${m}`;
 }
 
-export function lightLevel(location?: string): string {
+const STORED_LIGHT_LABELS: Record<string, string> = {
+  low: "Low / indirect",
+  medium: "Medium indirect",
+  bright_indirect: "Bright indirect",
+  full_sun: "Full sun",
+  unknown: "Assess in place",
+};
+
+/** Heuristic from room name when the API has no stored `lightLevel`. */
+export function lightLevelFromLocation(location?: string): string {
   if (!location) return "Bright indirect";
   const l = location.toLowerCase();
   if (l.includes("kitchen") || l.includes("office")) return "Bright indirect";
@@ -71,6 +91,13 @@ export function lightLevel(location?: string): string {
   if (l.includes("garden") || l.includes("courtyard")) return "Direct sun";
   if (l.includes("bedroom") || l.includes("living")) return "Bright indirect";
   return "Bright indirect";
+}
+
+/** Prefer Gemini-backed `plant.lightLevel`, else location heuristic. */
+export function displayLightLevel(plant: Plant): string {
+  const key = plant.lightLevel?.trim();
+  if (key && STORED_LIGHT_LABELS[key]) return STORED_LIGHT_LABELS[key]!;
+  return lightLevelFromLocation(plant.location);
 }
 
 export function healthHeadline(status: string): string {
@@ -205,6 +232,25 @@ export function healthSeries(status: string, seed: string): number[] {
     const wave = Math.sin(i * 0.75) * 5;
     return Math.min(100, Math.max(52, Math.round(base + wave + pseudo)));
   });
+}
+
+/**
+ * Turns AI care text into display bullets: prefers "- " / numbered lines; otherwise splits sentences.
+ */
+export function parseCareGuideBullets(text: string): string[] {
+  const t = text.trim();
+  if (!t) return [];
+  const lines = t.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const normalized = lines
+    .map((l) => l.replace(/^(\d+[.)]\s*|[-*•]\s+)/u, "").trim())
+    .filter(Boolean);
+  if (normalized.length >= 2) return normalized;
+  if (lines.length >= 2) return lines;
+  return t
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.replace(/\s+/g, " ").trim())
+    .filter((s) => s.length > 10)
+    .slice(0, 10);
 }
 
 export function readFileAsBase64(file: File): Promise<string> {

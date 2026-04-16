@@ -21,9 +21,71 @@ import {
   normalizeImageMimeType,
   sniffImageMime,
 } from "@/lib/plant-image";
+import {
+  fetchGeminiPlantProfile,
+  getGeminiApiKey,
+} from "@/lib/gemini-plant-profile";
 import CarePlan from "@/models/CarePlan";
 import Plant from "@/models/Plant";
 import { serializePlant } from "@/lib/serializers";
+
+let loggedMissingGeminiKey = false;
+
+type PlantCreateFields = {
+  userId: Types.ObjectId;
+  name: string;
+  species?: string;
+  location?: string;
+  imageUrl?: string;
+  imageData?: Buffer;
+  imageMimeType?: string;
+  hasEmbeddedImage: boolean;
+  notes?: string;
+  status: string;
+};
+
+async function withGeminiProfile(
+  fields: PlantCreateFields
+): Promise<
+  PlantCreateFields & {
+    lightLevel?: string;
+    careGuide?: {
+      watering: string;
+      sunlight: string;
+      fertilizer: string;
+      temperature: string;
+    };
+  }
+> {
+  if (!getGeminiApiKey()) {
+    if (process.env.NODE_ENV === "development" && !loggedMissingGeminiKey) {
+      loggedMissingGeminiKey = true;
+      console.info(
+        "[BloomIQ] GEMINI_API_KEY is not set on the backend — plants are saved without AI care guides or light level. Add it to backend/.env and restart the API server."
+      );
+    }
+    return fields;
+  }
+
+  const ai = await fetchGeminiPlantProfile({
+    name: fields.name,
+    species: fields.species,
+    location: fields.location,
+  });
+  if (!ai) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "[BloomIQ] Gemini call returned no profile — plant saved without careGuide/lightLevel. See earlier [BloomIQ Gemini] logs."
+      );
+    }
+    return fields;
+  }
+  return {
+    ...fields,
+    lightLevel: ai.lightLevel,
+    careGuide: ai.careGuide,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -69,6 +131,11 @@ export async function GET(request: NextRequest) {
         { species: rx },
         { location: rx },
         { notes: rx },
+        { careRequirements: rx },
+        { "careGuide.watering": rx },
+        { "careGuide.sunlight": rx },
+        { "careGuide.fertilizer": rx },
+        { "careGuide.temperature": rx },
       ];
     }
     const skip = (page - 1) * limit;
@@ -208,17 +275,19 @@ export async function POST(request: NextRequest) {
         imageUrl = undefined;
       }
 
-      const plant = await Plant.create({
-        userId,
-        name,
-        species: species || undefined,
-        location: location || undefined,
-        imageUrl: hasEmbeddedImage ? undefined : imageUrl,
-        imageData: hasEmbeddedImage ? imageData : undefined,
-        imageMimeType: hasEmbeddedImage ? imageMimeType : undefined,
-        hasEmbeddedImage,
-        status: "healthy",
-      });
+      const plant = await Plant.create(
+        await withGeminiProfile({
+          userId,
+          name,
+          species: species || undefined,
+          location: location || undefined,
+          imageUrl: hasEmbeddedImage ? undefined : imageUrl,
+          imageData: hasEmbeddedImage ? imageData : undefined,
+          imageMimeType: hasEmbeddedImage ? imageMimeType : undefined,
+          hasEmbeddedImage,
+          status: "healthy",
+        })
+      );
       return successResponse(
         "Plant created",
         serializePlant(plant.toObject()),
@@ -282,18 +351,20 @@ export async function POST(request: NextRequest) {
       imageUrl = undefined;
     }
 
-    const plant = await Plant.create({
-      userId,
-      name: body.name,
-      species: body.species,
-      location: body.location,
-      imageUrl: hasEmbeddedImage ? undefined : imageUrl,
-      imageData: hasEmbeddedImage ? imageData : undefined,
-      imageMimeType: hasEmbeddedImage ? imageMimeType : undefined,
-      hasEmbeddedImage,
-      notes: body.notes,
-      status: body.status ?? "healthy",
-    });
+    const plant = await Plant.create(
+      await withGeminiProfile({
+        userId,
+        name: body.name,
+        species: body.species,
+        location: body.location,
+        imageUrl: hasEmbeddedImage ? undefined : imageUrl,
+        imageData: hasEmbeddedImage ? imageData : undefined,
+        imageMimeType: hasEmbeddedImage ? imageMimeType : undefined,
+        hasEmbeddedImage,
+        notes: body.notes,
+        status: body.status ?? "healthy",
+      })
+    );
     return successResponse("Plant created", serializePlant(plant.toObject()), 201);
   } catch (err) {
     return handleServerError(err);
