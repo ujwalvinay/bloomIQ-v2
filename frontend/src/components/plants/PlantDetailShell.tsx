@@ -109,7 +109,7 @@ function PlantDetailChrome({ children }: { children: ReactNode }) {
                 href={`${base}/care-log`}
                 className={navLinkClass(segment === "care-log")}
               >
-                Care Log
+                Care chat
               </Link>
               <Link
                 href={`${base}/gallery`}

@@ -33,7 +33,7 @@ export function getGeminiApiKey(): string | undefined {
   return undefined;
 }
 
-function modelCandidates(): string[] {
+export function modelCandidates(): string[] {
   const fromEnv = process.env.GEMINI_MODEL?.trim();
   /** Prefer 1.5 first — free-tier quotas are often separate from 2.0-flash (common 429 target). */
   const defaults = [
@@ -109,7 +109,8 @@ Rules:
 Be specific to this plant when species is known; otherwise infer from the display name and safe houseplant defaults. No medical claims for humans or pets.`;
 }
 
-function extractJsonText(data: unknown): string | null {
+/** Extract concatenated text from the first candidate (JSON or plain chat). */
+export function extractGeminiText(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const root = data as Record<string, unknown>;
   const promptFeedback = root.promptFeedback as
@@ -364,7 +365,7 @@ export async function fetchGeminiPlantProfile(input: {
         return null;
       }
 
-      const text = extractJsonText(raw);
+      const text = extractGeminiText(raw);
       if (!text?.trim()) {
         if (process.env.NODE_ENV === "development") {
           console.warn(
