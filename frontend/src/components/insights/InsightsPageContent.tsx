@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import {
+  AlertCircle,
+  ClipboardList,
   Leaf,
+  MapPin,
   Share2,
   Sprout,
   TrendingUp,
@@ -14,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { absoluteApiUrl } from "@/lib/backend-origin";
 import { apiGet, type ApiEnvelope } from "@/lib/api";
+import { InsightsAiBriefSection } from "@/components/insights/InsightsAiBriefSection";
 
 type ActivityRow = {
   _id: string;
@@ -25,6 +29,7 @@ type ActivityRow = {
 };
 
 type DashboardSummary = {
+  timezone?: string;
   totalPlants: number;
   healthyPlants: number;
   needsAttentionPlants: number;
@@ -216,6 +221,37 @@ function KpiCard({
         {label}
       </p>
       <p className="mt-1 text-2xl font-bold tracking-tight text-ink">{value}</p>
+    </div>
+  );
+}
+
+function CareSignalCard({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-[18px] bg-white/90 p-4 shadow-soft ring-1 ring-black/[0.05] sm:p-5">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage/80 text-forest">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+            {label}
+          </p>
+          <p className="mt-0.5 text-xl font-bold tracking-tight text-ink">{value}</p>
+          {hint ? (
+            <p className="mt-1 text-xs leading-snug text-muted">{hint}</p>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -426,6 +462,20 @@ export function InsightsPageContent() {
     void load();
   }, [load]);
 
+  const attentionPlants = useMemo(
+    () => plants.filter((p) => p.status === "needs_attention"),
+    [plants]
+  );
+
+  const plantsByRoom = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of plants) {
+      const loc = (p.location ?? "").trim() || "Unassigned";
+      m.set(loc, (m.get(loc) ?? 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  }, [plants]);
+
   const taxonomy = useMemo(() => {
     if (plants.length === 0) {
       return { tropical: 45, succulent: 25, fern: 30 };
@@ -457,14 +507,14 @@ export function InsightsPageContent() {
   const milestones = useMemo((): MilestoneRow[] => {
     const acts = summary?.recentActivities ?? [];
     const byPlant = new Map(plants.map((p) => [p._id, p]));
-    const fromApi: MilestoneRow[] = acts.slice(0, 3).map((a) => {
+    const fromApi: MilestoneRow[] = acts.slice(0, 8).map((a) => {
       const plant = byPlant.get(a.plantId);
       return {
         ...milestoneFromActivity(a, plant),
         plant,
       };
     });
-    if (fromApi.length >= 3) return fromApi;
+    if (fromApi.length >= 8) return fromApi;
 
     const fallbacks: MilestoneRow[] = [
       {
@@ -483,22 +533,59 @@ export function InsightsPageContent() {
         time: "3 DAYS AGO",
         kind: "trophy",
       },
+      {
+        title: "Humidity holding steady",
+        body: "Clustered tropicals in one zone can share ambient moisture—watch leaves for crisp edges.",
+        time: "5 DAYS AGO",
+      },
+      {
+        title: "Repotting window approaching",
+        body: "Spring growth often follows a fresh mix—plan a batch session for your fastest growers.",
+        time: "1 WEEK AGO",
+      },
+      {
+        title: "Light audit reminder",
+        body: "Rotating pots a quarter turn weekly keeps growth even when natural light is one-sided.",
+        time: "10 DAYS AGO",
+      },
+      {
+        title: "Collection catalog synced",
+        body: "Species tags help BloomIQ tailor care reminders across your rooms.",
+        time: "2 WEEKS AGO",
+      },
+      {
+        title: "Conservatory rhythm on track",
+        body: "Steady check-ins beat heroic rescues—keep logging quick visits after watering.",
+        time: "3 WEEKS AGO",
+        kind: "trophy",
+      },
     ];
     const merged = [...fromApi];
-    for (let i = merged.length; i < 3; i++) {
+    for (let i = merged.length; i < 8; i++) {
       merged.push(fallbacks[i]!);
     }
-    return merged;
+    return merged.slice(0, 8);
   }, [summary?.recentActivities, plants]);
 
   const totalPlants = summary?.totalPlants ?? 0;
   const healthy = summary?.healthyPlants ?? 0;
+  const needsAttn = summary?.needsAttentionPlants ?? 0;
   const healthScore =
     totalPlants === 0
       ? 0
       : Math.round((100 * healthy) / Math.max(totalPlants, 1));
   const speciesN = distinctSpeciesCount(plants);
   const completedWeek = summary?.completedThisWeek ?? 0;
+
+  const healthSplit = useMemo(() => {
+    if (totalPlants === 0) {
+      return { healthyPct: 0, attentionPct: 0, otherPct: 100 };
+    }
+    const healthyPct = Math.round((100 * healthy) / totalPlants);
+    const attentionPct = Math.round((100 * needsAttn) / totalPlants);
+    const otherPct = Math.max(0, 100 - healthyPct - attentionPct);
+    return { healthyPct, attentionPct, otherPct };
+  }, [totalPlants, healthy, needsAttn]);
 
   if (loading) {
     return (
@@ -520,20 +607,22 @@ export function InsightsPageContent() {
 
   return (
     <div className="min-h-screen bg-care-canvas px-6 py-8 lg:px-10 lg:py-10">
-      <header className="mb-8 max-w-4xl">
+      <header className="mb-8 max-w-5xl">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
           Collection analysis
         </p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight text-ink lg:text-4xl">
           Your conservatory insights
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-          A detailed overview of your botanical collection&apos;s vitality, growth
-          patterns, and metabolic consistency over the past 30 days.
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted">
+          Vitality, workload, room spread, taxonomy, and activity milestones—plus
+          an AI brief you can regenerate or rewrite. Charts are illustrative;
+          counts and tasks reflect your live collection
+          {summary?.timezone ? ` (${summary.timezone.replace(/_/g, " ")})` : ""}.
         </p>
       </header>
 
-      <div className="mx-auto max-w-6xl space-y-6 pb-16">
+      <div className="mx-auto max-w-7xl space-y-6 pb-20">
         <section className="grid gap-4 sm:grid-cols-3">
           <KpiCard
             icon={<Leaf className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
@@ -560,6 +649,182 @@ export function InsightsPageContent() {
             }
           />
         </section>
+
+        <section className="grid gap-4 lg:grid-cols-4">
+          <CareSignalCard
+            icon={
+              <ClipboardList className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            }
+            label="Tasks due today"
+            value={String(summary?.tasksDueToday ?? 0)}
+            hint="From your care calendar in your profile timezone."
+          />
+          <CareSignalCard
+            icon={<AlertCircle className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+            label="Overdue tasks"
+            value={String(summary?.overdueTasks ?? 0)}
+            hint="Pending items scheduled before today—triage when you can."
+          />
+          <CareSignalCard
+            icon={<Sprout className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+            label="Completed this week"
+            value={String(completedWeek)}
+            hint="Logged completions in the current rolling week."
+          />
+          <CareSignalCard
+            icon={<MapPin className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+            label="Named locations"
+            value={String(summary?.livingZones ?? 0)}
+            hint="Distinct non-empty location labels across plants."
+          />
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-[22px] bg-white p-6 shadow-soft ring-1 ring-black/[0.04] lg:p-7">
+            <h2 className="text-lg font-bold text-ink">Collection health mix</h2>
+            <p className="mt-1 text-sm text-muted">
+              Share of plants marked healthy versus needing attention, relative
+              to your dashboard plant totals.
+            </p>
+            <div
+              className="mt-6 flex h-4 w-full overflow-hidden rounded-full bg-input-deep ring-1 ring-black/[0.06]"
+              role="img"
+              aria-label={`Healthy about ${healthSplit.healthyPct} percent, needs attention about ${healthSplit.attentionPct} percent`}
+            >
+              <div
+                className="h-full bg-forest transition-all"
+                style={{ width: `${healthSplit.healthyPct}%` }}
+              />
+              <div
+                className="h-full bg-amber-500/90 transition-all"
+                style={{ width: `${healthSplit.attentionPct}%` }}
+              />
+              <div
+                className="h-full bg-sage/60 transition-all"
+                style={{ width: `${healthSplit.otherPct}%` }}
+              />
+            </div>
+            <ul className="mt-4 flex flex-wrap gap-4 text-xs text-muted">
+              <li className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-forest" />
+                Healthy{" "}
+                <span className="font-semibold text-ink">{healthy}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                Needs attention{" "}
+                <span className="font-semibold text-ink">{needsAttn}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-sage" />
+                Other / archived in list{" "}
+                <span className="font-semibold text-ink">
+                  {Math.max(0, totalPlants - healthy - needsAttn)}
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-[22px] bg-white p-6 shadow-soft ring-1 ring-black/[0.04] lg:p-7">
+            <h2 className="text-lg font-bold text-ink">Plants by room</h2>
+            <p className="mt-1 text-sm text-muted">
+              Top locations by plant count—useful when planning watering routes.
+            </p>
+            {plantsByRoom.length === 0 ? (
+              <p className="mt-6 text-sm text-muted">
+                Add a location to any plant to see this breakdown.
+              </p>
+            ) : (
+              <ul className="mt-5 space-y-3">
+                {plantsByRoom.map(([name, count]) => (
+                  <li
+                    key={name}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="flex min-w-0 items-center gap-2 text-muted">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span className="truncate font-medium text-ink">{name}</span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-sage/70 px-2.5 py-0.5 text-xs font-bold text-forest">
+                      {count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link
+              href="/plants"
+              className="mt-6 inline-block text-sm font-semibold text-forest hover:text-olive-dark"
+            >
+              Manage plants →
+            </Link>
+          </div>
+        </section>
+
+        {attentionPlants.length > 0 ? (
+          <section className="rounded-[22px] bg-amber-50/80 p-6 shadow-sm ring-1 ring-amber-200/60 lg:p-7">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-ink">Needs a check-in</h2>
+                <p className="mt-1 text-sm text-muted">
+                  {attentionPlants.length} plant
+                  {attentionPlants.length === 1 ? "" : "s"} flagged as needing
+                  attention.
+                </p>
+              </div>
+              <Link
+                href="/plants"
+                className="text-sm font-semibold text-forest hover:text-olive-dark"
+              >
+                Open plants →
+              </Link>
+            </div>
+            <ul className="mt-5 flex gap-4 overflow-x-auto pb-1">
+              {attentionPlants.slice(0, 12).map((p) => {
+                const src = plantImageSrc(p);
+                return (
+                  <li
+                    key={p._id}
+                    className="w-36 shrink-0 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/[0.06]"
+                  >
+                    <div className="relative mx-auto h-20 w-20 overflow-hidden rounded-full bg-sage ring-2 ring-white">
+                      {src ? (
+                        p.imageUrl?.startsWith("/api/") ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={src}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Image
+                            src={src}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            sizes="80px"
+                          />
+                        )
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-forest">
+                          <Leaf className="h-8 w-8" strokeWidth={1.5} />
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 truncate text-center text-xs font-semibold text-ink">
+                      {p.name}
+                    </p>
+                    {p.location ? (
+                      <p className="truncate text-center text-[10px] text-muted">
+                        {p.location}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
 
         <section className="grid gap-6 lg:grid-cols-5">
           <div className="rounded-[22px] bg-white p-6 shadow-soft ring-1 ring-black/[0.04] lg:col-span-3 lg:p-7">
@@ -621,7 +886,7 @@ export function InsightsPageContent() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
+        <section className="grid gap-6 xl:grid-cols-2">
           <div className="rounded-[22px] bg-[#EFEAE0] p-6 shadow-sm ring-1 ring-black/[0.05] lg:p-7">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -654,8 +919,11 @@ export function InsightsPageContent() {
           </div>
 
           <div className="rounded-[22px] bg-white p-6 shadow-soft ring-1 ring-black/[0.04] lg:p-7">
-            <h2 className="text-lg font-bold text-ink">Recent milestones</h2>
-            <ul className="mt-6 space-y-6">
+            <h2 className="text-lg font-bold text-ink">Activity &amp; milestones</h2>
+            <p className="mt-1 text-sm text-muted">
+              Latest logged care and highlights—up to eight entries.
+            </p>
+            <ul className="mt-6 grid gap-6 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-7">
               {milestones.map((m, i) => {
                 const src = m.plant ? plantImageSrc(m.plant) : null;
                 const showTrophy = m.kind === "trophy";
@@ -710,6 +978,8 @@ export function InsightsPageContent() {
             </Link>
           </div>
         </section>
+
+        <InsightsAiBriefSection />
       </div>
     </div>
   );
