@@ -84,9 +84,11 @@ backend/
 | `MONGODB_URI` | MongoDB connection string |
 | `JWT_ACCESS_SECRET` | HMAC secret for access JWT |
 | `JWT_REFRESH_SECRET` | HMAC secret for refresh JWT (must differ from access) |
-| `NODE_ENV` | `development` \| `production` \| `test` (defaults to `development`) |
+| `NODE_ENV` | `development` \| `production` \| `test` (defaults to `development` when unset) |
 
 If any required value is missing, the first call that loads env will **throw** with a JSON summary of field errors.
+
+**Hosted deploys (e.g. Render):** Do not set `NODE_ENV=development` in the service environment. Next.js must run `next build` with `NODE_ENV=production`; this repo’s `npm run build` forces that. At runtime, use `production` so auth cookies get the `Secure` flag under HTTPS.
 
 ### Optional / feature-specific
 
@@ -349,6 +351,7 @@ npm run seed
 
 ### Production checklist
 
+- Use **`NODE_ENV=production`** on the host (or leave unset if the platform sets it). Avoid copying `NODE_ENV=development` from local `.env` into production env vars.
 - Set strong, unique **JWT secrets**.
 - Set **`GEMINI_API_KEY`** (or `GOOGLE_API_KEY`) if you use AI plant profiles, care chat, or insights brief generation.
 - Configure **Resend** + **`MAIL_FROM`** and **`APP_ORIGIN`** only if you still expose **email-based** password reset to users.

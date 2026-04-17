@@ -157,7 +157,7 @@ Open **[http://localhost:3001](http://localhost:3001)**. The UI expects the back
 | `MONGODB_URI` | Yes | Database connection string |
 | `JWT_ACCESS_SECRET` | Yes | Secret for signing access JWTs |
 | `JWT_REFRESH_SECRET` | Yes | Secret for refresh tokens |
-| `NODE_ENV` | Optional | `development` / `production` |
+| `NODE_ENV` | Optional | `development` / `production` (omit or use `production` on hosts like Render; do not set `development` in production) |
 | `GEMINI_API_KEY` | Optional | Google AI / Gemini for plant profiles, care chat, insights brief |
 | `APP_ORIGIN` | Optional | Frontend base URL (legacy reset email links) |
 | `RESEND_API_KEY` | Optional | Resend API key for transactional email |
