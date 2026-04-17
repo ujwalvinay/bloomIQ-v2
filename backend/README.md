@@ -33,7 +33,8 @@ This package is designed to run as a **standalone server** (default **http://loc
 | Passwords | bcryptjs |
 | Tokens | jsonwebtoken |
 | Dates / timezones | date-fns, date-fns-tz |
-| Email (password reset) | [Resend](https://resend.com) HTTP API (optional in dev) |
+| AI (optional) | Google **Gemini** HTTP API (`GEMINI_API_KEY` / `GOOGLE_API_KEY`) — plant profiles, care chat, insights brief |
+| Email (optional) | [Resend](https://resend.com) for **legacy** forgot-password emails if you call that API outside the current app UI |
 
 TypeScript **`strict`** mode, path alias `@/*` → `src/*`.
 
@@ -56,13 +57,15 @@ backend/
 │   │   ├── cookies.ts       # Cookie names + set/clear helpers
 │   │   ├── db.ts            # Mongoose connect (HMR-safe singleton)
 │   │   ├── env.ts           # Zod-validated env (Mongo + JWT + NODE_ENV)
-│   │   ├── mail.ts          # Password reset URL + Resend delivery
+│   │   ├── mail.ts          # Legacy password-reset URL + Resend delivery
+│   │   ├── gemini-plant-profile.ts, gemini-care-chat.ts, gemini-insights-brief.ts
+│   │   ├── insights-fingerprint.ts
 │   │   ├── serializers.ts   # Lean docs → API-friendly JSON
 │   │   ├── care-utils.ts    # Care schedules, due dates, user TZ helpers
 │   │   ├── calendar-tasks.ts
 │   │   ├── plant-image.ts   # MIME sniffing, size limits, normalization
 │   │   └── validators/      # Zod schemas per resource
-│   ├── models/              # Mongoose schemas (User, Plant, CarePlan, Task, ActivityLog)
+│   ├── models/              # User, Plant, CarePlan, Task, ActivityLog, InsightAiBrief
 │   └── types/               # Shared TS types (auth, api, plant, …)
 ├── .env.example
 └── package.json
@@ -89,9 +92,11 @@ If any required value is missing, the first call that loads env will **throw** w
 
 | Variable | Purpose |
 |----------|---------|
-| `APP_ORIGIN` | Base URL for password-reset links (default `http://localhost:3001`) |
-| `RESEND_API_KEY` | Resend API key — **required in production** to send reset emails |
-| `MAIL_FROM` | Verified sender — **required with Resend in production** |
+| `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Google AI / Gemini — plant profile inference, `/api/plants/[id]/care-chat`, `/api/insights/ai-brief` generation |
+| `GEMINI_MODEL` | Optional model override (see `.env.example`) |
+| `APP_ORIGIN` | Base URL for **legacy** password-reset links from `forgot-password` (default `http://localhost:3001`) |
+| `RESEND_API_KEY` | Resend API key — only needed if you use **email** reset flows |
+| `MAIL_FROM` | Verified sender — use with Resend |
 
 In **development**, if Resend is not configured, `sendPasswordResetEmail` **logs** the reset URL to the server console instead of sending mail.
 
@@ -145,8 +150,8 @@ Attributes: **`httpOnly: true`**, **`path: /`**, **`sameSite: lax`**, **`secure`
 
 ### Public vs protected endpoints
 
-- **Public**: signup, login, refresh, logout, forgot-password, reset-password (no access cookie required; some need body tokens).
-- **Protected**: everything that reads or mutates user-owned data (plants, tasks, care plans, dashboard, me, avatars, plant images, activities).
+- **Public**: signup, login, refresh, logout, forgot-password, reset-password (no access cookie required; forgot/reset are **legacy** email flows).
+- **Protected**: everything that reads or mutates user-owned data (plants, tasks, care plans, dashboard, me, avatars, plant images, activities), plus **`POST /api/auth/change-password`** (requires access cookie + current password) and **`/api/insights/ai-brief`** (GET/POST/PATCH).
 
 Clients should send **`credentials: "include"`** on `fetch` so cookies attach to API calls.
 
@@ -199,8 +204,9 @@ Below, **Auth** means a valid **access** cookie unless noted.
 | `POST` | `/api/auth/login` | No | Email + password; sets cookies |
 | `POST` | `/api/auth/logout` | No* | Clears auth cookies (`POST` with no body is fine) |
 | `POST` | `/api/auth/refresh` | Refresh cookie | Issues new access + refresh tokens |
-| `POST` | `/api/auth/forgot-password` | No | Starts reset flow; emails or logs URL (see mail env) |
-| `POST` | `/api/auth/reset-password` | No | Complete reset with token from email |
+| `POST` | `/api/auth/forgot-password` | No | Legacy: starts email reset flow; emails or logs URL (see mail env) |
+| `POST` | `/api/auth/reset-password` | No | Legacy: complete reset with token from email |
+| `POST` | `/api/auth/change-password` | Yes | Body: `currentPassword`, `newPassword` — updates hash, bumps `refreshTokenVersion`, clears cookies in response |
 | `GET` | `/api/auth/me` | Yes | Current user profile (`SafeUser`) |
 | `PATCH` | `/api/auth/me` | Yes | Update profile fields |
 | `GET` | `/api/auth/me/avatar` | Yes | Raw avatar bytes (`Content-Type` from stored MIME) |
@@ -219,6 +225,7 @@ Below, **Auth** means a valid **access** cookie unless noted.
 | `PATCH` | `/api/plants/[id]` | Yes | Update plant |
 | `DELETE` | `/api/plants/[id]` | Yes | Delete plant |
 | `GET` | `/api/plants/[id]/image` | Yes | Embedded plant photo bytes |
+| `POST` | `/api/plants/[id]/care-chat` | Yes | Body: message + optional image — Gemini care assistant reply |
 
 ### Care plans
 
@@ -250,6 +257,16 @@ Below, **Auth** means a valid **access** cookie unless noted.
 | `POST` | `/api/activities` | Yes | Append activity (e.g. note, manual log) |
 | `GET` | `/api/dashboard/summary` | Yes | Aggregated dashboard payload |
 
+### Insights (AI brief)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/insights/ai-brief` | Yes | Current stored brief, staleness vs dashboard fingerprint, small stats preview |
+| `POST` | `/api/insights/ai-brief` | Yes | Regenerate brief via Gemini; persists `InsightAiBrief` |
+| `PATCH` | `/api/insights/ai-brief` | Yes | Body: `content` — save user-edited brief text |
+
+Requires **`GEMINI_API_KEY`** (or `GOOGLE_API_KEY`) for successful `POST` generation.
+
 ---
 
 ## Data model
@@ -265,10 +282,14 @@ User ──< Plant ──< CarePlan
 
 ### `User` (`src/models/User.ts`)
 
-- Credentials: `passwordHash` (select: false), optional `passwordResetTokenHash` / `passwordResetExpiresAt`
+- Credentials: `passwordHash` (select: false), optional `passwordResetTokenHash` / `passwordResetExpiresAt` (legacy email reset)
 - Profile: `name`, `email` (unique), `timezone`, `notificationEnabled`
 - Avatar: `avatarData`, `avatarMimeType`, `hasAvatar`
-- Session invalidation: `refreshTokenVersion`
+- Session invalidation: `refreshTokenVersion` (incremented on password change and some logout paths)
+
+### `InsightAiBrief` (`src/models/InsightAiBrief.ts`)
+
+- One document per `userId` (unique): AI or user-edited **insights page brief** text, `contentKind`, `sourceFingerprint` for staleness when dashboard stats change
 
 ### `Plant` (`src/models/Plant.ts`)
 
@@ -304,7 +325,11 @@ User ──< Plant ──< CarePlan
 | `serializers.ts` | Normalize ObjectIds and dates to strings for JSON |
 | `plant-image.ts` | Max size, allowed MIME types, buffer normalization |
 | `activity-response.ts` | Enrich activity list with resolved task titles |
-| `password-reset-token.ts` | Hash / verify reset tokens (implementation detail for auth routes) |
+| `password-reset-token.ts` | Hash / verify reset tokens (legacy forgot-password / reset-password routes) |
+| `gemini-plant-profile.ts` | Gemini calls for inferred light level + care guide JSON |
+| `gemini-care-chat.ts` | Multi-turn plant care chat with optional image |
+| `gemini-insights-brief.ts` | One-shot collection narrative for insights |
+| `insights-fingerprint.ts` | SHA-based fingerprint of dashboard counts for brief staleness |
 
 ---
 
@@ -325,7 +350,8 @@ npm run seed
 ### Production checklist
 
 - Set strong, unique **JWT secrets**.
-- Configure **Resend** + **`MAIL_FROM`** and **`APP_ORIGIN`** for real password-reset emails.
+- Set **`GEMINI_API_KEY`** (or `GOOGLE_API_KEY`) if you use AI plant profiles, care chat, or insights brief generation.
+- Configure **Resend** + **`MAIL_FROM`** and **`APP_ORIGIN`** only if you still expose **email-based** password reset to users.
 - Ensure **`secure` cookies** work (HTTPS).
 - MongoDB: use a managed cluster with TLS; restrict network access.
 

@@ -4,13 +4,13 @@
 
 **Smart plant care for people who want thriving plants, not guesswork.**
 
-A full-stack web application for tracking plants, care plans, and tasks—with a calendar-first workflow, insights, and secure multi-user accounts.
+A full-stack web application for tracking plants, care plans, and tasks—with a calendar-first workflow, insights (including optional AI-generated briefs), and secure multi-user accounts. The UI is **responsive** for phones and tablets as well as desktop.
 
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 
-[Features](#-features) · [Architecture](#-architecture) · [Quick start](#-quick-start) · [Configuration](#-configuration)
+[Features](#features) · [Architecture](#architecture) · [Quick start](#quick-start) · [Configuration](#configuration-reference)
 
 </div>
 
@@ -26,11 +26,11 @@ BloomIQ helps you **organize care** across many plants: scheduled tasks, due dat
 
 | Area | What you get |
 |------|----------------|
-| **Plants** | Add plants, photos, per-plant overview, gallery, care log, and history |
-| **Care & tasks** | Care plans, generated tasks, “due today,” and calendar views |
-| **Insights** | Trends and summaries to understand how your collection is doing |
-| **Account** | Sign up, sign in, profile settings, forgot / reset password (email-ready in production) |
-| **Security** | JWT-based auth, password hashing, refresh-friendly API design |
+| **Plants** | Add plants, photos, per-plant overview, gallery, care log, care chat (Gemini), and history |
+| **Care & tasks** | Care plans, generated tasks, “due today,” and calendar views (month/week) tuned for small screens |
+| **Insights** | Collection metrics, workload signals, and an **AI conservatory brief** you can regenerate or edit (stored per user) |
+| **Account** | Sign up, sign in, profile settings, **change password** in Settings (current + new password; session ends and you sign in again). Legacy email reset routes still exist on the API but the app UI routes redirect to login |
+| **Security** | JWT-based auth, password hashing, refresh-token versioning, cookie-based sessions |
 
 ---
 
@@ -86,10 +86,14 @@ Required for a working API:
 - `JWT_ACCESS_SECRET` — strong secret for access tokens  
 - `JWT_REFRESH_SECRET` — strong secret for refresh tokens (use a different value than access)  
 
-Optional / production:
+Optional but recommended for full product behavior:
 
-- `APP_ORIGIN` — frontend origin (e.g. `http://localhost:3001`) for password reset links  
-- `RESEND_API_KEY` & `MAIL_FROM` — [Resend](https://resend.com) for transactional email in production  
+- **`GEMINI_API_KEY`** (or `GOOGLE_API_KEY`) — enables plant profile enrichment, per-plant care chat, and **Insights → AI conservatory brief** generation. See `backend/.env.example` for notes.
+
+Optional / production extras:
+
+- `APP_ORIGIN` — frontend origin (e.g. `http://localhost:3001`), used by legacy **forgot-password** link builders if you call those APIs  
+- `RESEND_API_KEY` & `MAIL_FROM` — [Resend](https://resend.com) if you still use email-based password reset outside the app  
 
 **Frontend** — optional override for where `/api` is proxied:
 
@@ -154,8 +158,9 @@ Open **[http://localhost:3001](http://localhost:3001)**. The UI expects the back
 | `JWT_ACCESS_SECRET` | Yes | Secret for signing access JWTs |
 | `JWT_REFRESH_SECRET` | Yes | Secret for refresh tokens |
 | `NODE_ENV` | Optional | `development` / `production` |
-| `APP_ORIGIN` | Recommended for resets | Frontend base URL |
-| `RESEND_API_KEY` | Production email | Resend API key |
+| `GEMINI_API_KEY` | Optional | Google AI / Gemini for plant profiles, care chat, insights brief |
+| `APP_ORIGIN` | Optional | Frontend base URL (legacy reset email links) |
+| `RESEND_API_KEY` | Optional | Resend API key for transactional email |
 | `MAIL_FROM` | With Resend | Verified sender address |
 
 ### Frontend (`frontend/.env.local`)
@@ -168,8 +173,8 @@ Open **[http://localhost:3001](http://localhost:3001)**. The UI expects the back
 
 ## Tech stack
 
-- **Frontend:** Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide icons  
-- **Backend:** Next.js 14 API routes, Mongoose, Zod, bcrypt, JWT, date-fns / time zones  
+- **Frontend:** Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide icons; mobile-friendly **app shell** (drawer + top bar under `lg`)  
+- **Backend:** Next.js 14 API routes, Mongoose, Zod, bcrypt, JWT, date-fns / time zones; optional **Gemini** HTTP calls for AI features  
 
 ---
 

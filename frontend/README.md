@@ -26,20 +26,24 @@ frontend/
 ├── tailwind.config.ts   # Design tokens (colors, shadows)
 ├── src/
 │   ├── app/             # Routes, layouts, metadata
-│   │   ├── layout.tsx   # Root: font, globals.css, <html>/<body>
+│   │   ├── layout.tsx   # Root: font, globals.css, viewport, <html>/<body>
 │   │   ├── page.tsx     # Public landing (/)
-│   │   ├── login/ …     # Auth & recovery (outside app shell)
+│   │   ├── login/ …     # Auth (outside app shell)
+│   │   ├── signup/
+│   │   ├── forgot-password/   # Redirects to /login
+│   │   ├── reset-password/    # Redirects to /login
 │   │   └── (app)/       # Route group: signed-in chrome (no URL segment)
-│   │       ├── layout.tsx    # AppSidebar + padded main column
+│   │       ├── layout.tsx    # AppShell (sidebar / mobile nav + main)
 │   │       ├── dashboard/
 │   │       ├── plants/…
+│   │       ├── calendar/     # Full-viewport calendar (see page notes below)
 │   │       └── …
 │   ├── components/      # Feature UI (co-located by domain)
 │   │   ├── auth/
 │   │   ├── calendar/
 │   │   ├── dashboard/
 │   │   ├── insights/
-│   │   ├── layout/      # AppSidebar
+│   │   ├── layout/      # AppShell.tsx, AppSidebar.tsx
 │   │   ├── plants/      # Lists, detail shell, tabs, add flow
 │   │   └── settings/
 │   └── lib/
@@ -55,21 +59,28 @@ frontend/
 
 ### Route group `(app)`
 
-Files under `src/app/(app)/` share a **layout** that mounts the fixed **`AppSidebar`** and a scrollable main area with **left padding** for the sidebar width (`pl-[280px]`). The `(app)` segment does **not** appear in the URL.
+Files under `src/app/(app)/` share a layout that mounts **`AppShell`**:
+
+- **Desktop (`lg` and up):** fixed **`AppSidebar`** (~280px) and main content with **`lg:pl-[280px]`** so the column clears the sidebar.
+- **Mobile / tablet (below `lg`):** a **top bar** (logo, notification, menu), **slide-in drawer** for the same nav as the sidebar, backdrop tap to close, and **safe-area** padding for notched devices. Main content has top padding for the bar height.
+
+The `(app)` segment does **not** appear in the URL.
+
+**Calendar page** (`src/app/(app)/calendar/page.tsx`) uses a **`fixed`** full-viewport `<main>` so the calendar can manage its own scroll regions. It uses **`pl-0` on small screens** and **`lg:pl-[280px]`** on desktop so it does not reserve sidebar gutter width on phones.
 
 ### Public vs authenticated surfaces
 
-There is **no Next.js middleware** in this package. **Auth is enforced by the API** (cookies + 401s); pages under `(app)` assume a logged-in user for a good UX, while `login`, `signup`, and password flows are standalone routes.
+There is **no Next.js middleware** in this package. **Auth is enforced by the API** (cookies + 401s); pages under `(app)` assume a logged-in user for a good UX, while `login` and `signup` are standalone routes.
 
 | URL | Purpose |
 |-----|---------|
 | `/` | Landing: links to sign in / sign up |
-| `/login` | Sign in (`?registered=1`, `?reset=1` query flags) |
+| `/login` | Sign in (`?registered=1` query flag supported) |
 | `/signup` | Registration |
-| `/forgot-password` | Request reset email |
-| `/reset-password` | Complete reset (token from email) |
+| `/forgot-password` | Redirects to **`/login`** (password changes happen in **Settings** while signed in) |
+| `/reset-password` | Redirects to **`/login`** |
 
-### Signed-in navigation (sidebar)
+### Signed-in navigation (sidebar / drawer)
 
 Primary nav is defined in `src/components/layout/AppSidebar.tsx`:
 
@@ -79,9 +90,9 @@ Primary nav is defined in `src/components/layout/AppSidebar.tsx`:
 | `/plants` | Plant list |
 | `/plants/add` | Add plant flow |
 | `/calendar` | Care calendar |
-| `/insights` | Insights / analytics-style view |
-| `/settings` | Account & preferences |
-| `/help` | Help center (footer area of sidebar, not in main `nav` array) |
+| `/insights` | Insights and AI brief |
+| `/settings` | Account & preferences (includes **change password** modal) |
+| `/help` | Help center (linked from sidebar footer, not in the main `nav` array) |
 
 ### Plant detail (nested routes)
 
@@ -91,7 +102,7 @@ Primary nav is defined in `src/components/layout/AppSidebar.tsx`:
 |------|------------|
 | `/plants/[id]` | Redirects to **`/plants/[id]/overview`** |
 | `/plants/[id]/overview` | Overview |
-| `/plants/[id]/care-log` | Care log |
+| `/plants/[id]/care-log` | Care chat |
 | `/plants/[id]/gallery` | Gallery |
 | `/plants/[id]/history` | History |
 
@@ -143,11 +154,12 @@ Rewriting large/binary responses through the frontend dev server can be unreliab
 
 ---
 
-## Styling
+## Styling & layout
 
-- **Global styles:** `src/app/globals.css` (Tailwind layers + any global rules).
-- **Theme:** `tailwind.config.ts` extends the palette (`cream`, `forest`, `olive`, `sidebar.*`, page-specific canvases like `plants-canvas`, etc.) and shadows (`card`, `soft`).
-- **Layout:** App shell is **sidebar-fixed + fluid main**; plant detail uses tab chrome in `PlantDetailShell`.
+- **Global styles:** `src/app/globals.css` (Tailwind layers + focus rules).
+- **Theme:** `tailwind.config.ts` extends the palette (`cream`, `forest`, `olive`, `sidebar.*`, page-specific canvases like `plants-canvas`, `care-canvas`, etc.) and shadows (`card`, `soft`).
+- **App shell:** Sidebar + padded main on large screens; **drawer + top bar** on small screens (`AppShell` + `AppSidebar`).
+- **Responsive patterns:** `min-w-0` / `max-w-full` on flex children where needed, readable typography scales, and calendar/day layouts tuned for narrow viewports.
 
 ---
 
@@ -182,7 +194,8 @@ Copy `.env.example` to `.env.local` and adjust if your API is not on the default
 3. If the link should appear in the sidebar, extend the `nav` array in `AppSidebar.tsx`.
 4. Call the backend via **`/api/...`** and `apiGet` / `apiPost` / etc.
 5. For new **remote image domains**, add `images.remotePatterns` in `next.config.mjs`.
+6. Test **mobile width** (`<1024px`): confirm nothing assumes `pl-[280px]` unless scoped to `lg:`.
 
 ---
 
-For full-stack setup (MongoDB, JWT secrets, running both apps), see the **[root README](../README.md)**.
+For full-stack setup (MongoDB, JWT secrets, Gemini, running both apps), see the **[root README](../README.md)** and **[backend README](../backend/README.md)**.
