@@ -326,7 +326,7 @@ export function SettingsPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-care-canvas px-6 py-10 lg:px-10">
+      <div className="min-h-screen bg-care-canvas px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
         <p className="text-sm text-muted">Loading settings…</p>
       </div>
     );
@@ -334,7 +334,7 @@ export function SettingsPageContent() {
 
   if (error && !displayName && !email) {
     return (
-      <div className="min-h-screen bg-care-canvas px-6 py-10 lg:px-10">
+      <div className="min-h-screen bg-care-canvas px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
         <p className="text-sm text-alert" role="alert">
           {error}
         </p>
@@ -343,9 +343,9 @@ export function SettingsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-care-canvas px-6 py-8 lg:px-10 lg:py-10">
-      <header className="mb-8 max-w-4xl">
-        <h1 className="text-3xl font-bold tracking-tight text-forest">
+    <div className="min-h-screen bg-care-canvas px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <header className="mb-6 max-w-4xl sm:mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-forest sm:text-3xl">
           Account settings
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
@@ -702,7 +702,7 @@ export function SettingsPageContent() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="change-pw-title"
-            className="w-full max-w-md rounded-[1.5rem] bg-white p-6 shadow-card ring-1 ring-black/[0.08] sm:p-8"
+            className="max-h-[min(90dvh,640px)] w-full max-w-md overflow-y-auto overscroll-contain rounded-[1.5rem] bg-white p-5 shadow-card ring-1 ring-black/[0.08] sm:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">

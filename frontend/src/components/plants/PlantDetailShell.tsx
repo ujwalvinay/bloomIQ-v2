@@ -87,44 +87,61 @@ function PlantDetailChrome({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-full bg-archive-cream pb-16">
-        <header className="sticky top-0 z-30 border-b border-stone-200/60 bg-archive-cream/95 px-4 py-4 backdrop-blur-md sm:px-6 lg:px-10">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
-            <Link
-              href="/plants"
-              className="text-sm font-semibold tracking-tight text-forest"
-            >
-              Botanical Archive
-            </Link>
+        <header className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 border-b border-stone-200/60 bg-archive-cream/95 px-3 py-3 backdrop-blur-md sm:px-6 lg:top-0 lg:px-10 lg:py-4">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-4">
+            <div className="flex items-center justify-between gap-3 lg:contents">
+              <Link
+                href="/plants"
+                className="shrink-0 text-sm font-semibold tracking-tight text-forest"
+              >
+                Botanical Archive
+              </Link>
+              <div className="flex shrink-0 items-center gap-2 lg:hidden">
+                <button
+                  type="button"
+                  className="rounded-full p-2 text-muted transition hover:bg-black/[0.04] hover:text-ink"
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-5 w-5" strokeWidth={1.75} />
+                </button>
+                <div
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-archive-sage text-xs font-semibold text-forest"
+                  aria-hidden
+                >
+                  {initials(user?.name ?? "?")}
+                </div>
+              </div>
+            </div>
             <nav
-              className="order-3 flex w-full justify-center gap-8 text-xs font-semibold uppercase tracking-[0.12em] text-muted sm:order-none sm:w-auto"
+              className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted [scrollbar-width:none] sm:mx-0 sm:justify-center lg:w-auto lg:justify-center lg:gap-8 [&::-webkit-scrollbar]:hidden"
               aria-label="Plant sections"
             >
               <Link
                 href={`${base}/overview`}
-                className={navLinkClass(segment === "overview")}
+                className={`shrink-0 whitespace-nowrap ${navLinkClass(segment === "overview")}`}
               >
                 Overview
               </Link>
               <Link
                 href={`${base}/care-log`}
-                className={navLinkClass(segment === "care-log")}
+                className={`shrink-0 whitespace-nowrap ${navLinkClass(segment === "care-log")}`}
               >
                 Care chat
               </Link>
               <Link
                 href={`${base}/gallery`}
-                className={navLinkClass(segment === "gallery")}
+                className={`shrink-0 whitespace-nowrap ${navLinkClass(segment === "gallery")}`}
               >
                 Gallery
               </Link>
               <Link
                 href={`${base}/history`}
-                className={navLinkClass(segment === "history")}
+                className={`shrink-0 whitespace-nowrap ${navLinkClass(segment === "history")}`}
               >
                 History
               </Link>
             </nav>
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:max-w-[min(100%,220px)] lg:max-w-xs">
+            <div className="flex min-w-0 w-full items-center gap-2 lg:flex-1 lg:justify-end lg:max-w-xs">
               <PlantSearchCombobox
                 value={headerSearch}
                 onChange={setHeaderSearch}
@@ -134,20 +151,20 @@ function PlantDetailChrome({ children }: { children: ReactNode }) {
                 inputClassName="bg-white/90 ring-1 ring-stone-200/70"
                 debounceMs={280}
               />
-            </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <button
-                type="button"
-                className="rounded-full p-2 text-muted transition hover:bg-black/[0.04] hover:text-ink"
-                aria-label="Notifications"
-              >
-                <Bell className="h-5 w-5" strokeWidth={1.75} />
-              </button>
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-archive-sage text-xs font-semibold text-forest"
-                aria-hidden
-              >
-                {initials(user?.name ?? "?")}
+              <div className="hidden shrink-0 items-center gap-2 lg:flex">
+                <button
+                  type="button"
+                  className="rounded-full p-2 text-muted transition hover:bg-black/[0.04] hover:text-ink"
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-5 w-5" strokeWidth={1.75} />
+                </button>
+                <div
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-archive-sage text-xs font-semibold text-forest"
+                  aria-hidden
+                >
+                  {initials(user?.name ?? "?")}
+                </div>
               </div>
             </div>
           </div>

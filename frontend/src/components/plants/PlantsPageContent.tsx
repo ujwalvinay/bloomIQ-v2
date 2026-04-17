@@ -282,8 +282,8 @@ export function PlantsPageContent() {
 
   return (
     <div className="min-h-full bg-plants-canvas pb-16">
-      <div className="border-b border-stone-200/50 bg-plants-canvas/95 px-6 py-8 backdrop-blur-sm lg:px-10 lg:py-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink lg:text-[2rem]">
+      <div className="border-b border-stone-200/50 bg-plants-canvas/95 px-4 py-6 backdrop-blur-sm sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl lg:text-[2rem]">
           My Plants
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
@@ -372,14 +372,14 @@ export function PlantsPageContent() {
       </div>
 
       {error ? (
-        <div className="px-6 pt-4 lg:px-10">
+        <div className="px-4 pt-4 sm:px-6 lg:px-10">
           <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-alert" role="alert">
             {error}
           </p>
         </div>
       ) : null}
 
-      <div className="px-6 py-8 lg:px-10 lg:py-10">
+      <div className="px-4 py-6 pb-20 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
         {list && list.items.length === 0 ? (
           <div className="rounded-2xl bg-white/80 px-6 py-16 text-center ring-1 ring-stone-200/60">
             <p className="text-lg font-semibold text-ink">
@@ -516,7 +516,7 @@ export function PlantsPageContent() {
         )}
       </div>
 
-      <footer className="border-t border-stone-200/60 bg-white/60 px-6 py-6 lg:px-10">
+      <footer className="border-t border-stone-200/60 bg-white/60 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-10">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-6 text-[11px] font-bold uppercase tracking-[0.15em] text-muted">
             <p>

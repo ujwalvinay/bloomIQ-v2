@@ -300,12 +300,12 @@ export function CareCalendarContent() {
   const completedCount = completedRows.length;
 
   return (
-    <div className="flex h-full min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden bg-care-canvas px-6 py-6 lg:px-10 lg:py-8">
+    <div className="flex h-full min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden bg-care-canvas px-4 py-5 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
       <header className="mb-4 shrink-0 lg:mb-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
           Monthly schedule
         </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-ink">
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           Care calendar
         </h1>
       </header>
@@ -320,7 +320,7 @@ export function CareCalendarContent() {
       )}
 
       <div className="flex min-h-0 w-full max-w-none flex-1 flex-col gap-6 overflow-hidden xl:flex-row xl:items-stretch xl:gap-8">
-        <section className="flex max-h-[min(520px,50vh)] min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[22px] bg-white p-5 shadow-soft sm:p-7 xl:h-full xl:max-h-none xl:min-w-0 xl:shrink xl:flex-1">
+        <section className="flex max-h-[min(560px,62vh)] min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[22px] bg-white p-4 shadow-soft sm:max-h-[min(520px,50vh)] sm:p-7 xl:h-full xl:max-h-none xl:min-w-0 xl:shrink xl:flex-1">
           <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-bold text-ink">
@@ -383,19 +383,21 @@ export function CareCalendarContent() {
             </p>
           ) : null}
 
-          <div className="grid grid-cols-7 gap-y-1 text-center text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <div className="grid grid-cols-7 gap-y-0.5 text-center text-[9px] font-semibold uppercase tracking-wider text-muted sm:gap-y-1 sm:text-[10px]">
             {WEEKDAYS.map((d) => (
-              <div key={d} className="py-2">
+              <div key={d} className="truncate py-1.5 sm:py-2">
                 {d}
               </div>
             ))}
           </div>
 
           {viewMode === "month" ? (
-            <div className="mt-1 grid grid-cols-7 gap-2">
+            <div className="mt-1 grid grid-cols-7 gap-0.5 sm:gap-2">
               {monthCells.map((day, idx) => {
                 if (day === null) {
-                  return <div key={`e-${idx}`} className="min-h-[88px]" />;
+                  return (
+                    <div key={`e-${idx}`} className="min-h-[56px] sm:min-h-[88px]" />
+                  );
                 }
                 const key = toKey(visibleY, visibleM, day);
                 const dots = marksToDots(key, rangeMarks[key]);
@@ -405,14 +407,14 @@ export function CareCalendarContent() {
                     key={key}
                     type="button"
                     onClick={() => setSelectedKey(key)}
-                    className={`flex min-h-[88px] flex-col rounded-2xl border p-2 text-left transition ${
+                    className={`flex min-h-[56px] flex-col rounded-xl border p-1.5 text-left transition sm:min-h-[88px] sm:rounded-2xl sm:p-2 ${
                       selected
                         ? "border-forest bg-sage/70 shadow-sm"
                         : "border-transparent bg-care-canvas/40 hover:bg-care-canvas"
                     }`}
                   >
                     <span
-                      className={`text-sm font-semibold ${
+                      className={`text-xs font-semibold sm:text-sm ${
                         selected ? "text-forest" : "text-ink"
                       }`}
                     >
@@ -423,7 +425,7 @@ export function CareCalendarContent() {
                         {dots.slice(0, 4).map((dot) => (
                           <span
                             key={dot.id}
-                            className={`flex h-6 w-6 items-center justify-center rounded-full shadow-sm ${
+                            className={`flex h-5 w-5 items-center justify-center rounded-full shadow-sm sm:h-6 sm:w-6 ${
                               dot.variant === "completed"
                                 ? "bg-white/60 text-forest/70 ring-1 ring-forest/20"
                                 : "bg-white/90 text-forest"
@@ -434,7 +436,10 @@ export function CareCalendarContent() {
                                 : "Scheduled"
                             }
                           >
-                            <CellTaskIcon kind={dot.kind} className="h-3 w-3" />
+                            <CellTaskIcon
+                              kind={dot.kind}
+                              className="h-2.5 w-2.5 sm:h-3 sm:w-3"
+                            />
                           </span>
                         ))}
                         {dots.length > 4 && (
@@ -449,7 +454,7 @@ export function CareCalendarContent() {
               })}
             </div>
           ) : (
-            <div className="mt-1 grid grid-cols-7 gap-2">
+            <div className="mt-1 grid grid-cols-7 gap-0.5 sm:gap-2">
               {weekDays.map((dt) => {
                 const y = dt.getFullYear();
                 const m = dt.getMonth();
@@ -467,7 +472,7 @@ export function CareCalendarContent() {
                       setVisibleY(y);
                       setVisibleM(m);
                     }}
-                    className={`flex min-h-[100px] flex-col rounded-2xl border p-2 text-left transition ${
+                    className={`flex min-h-[72px] flex-col rounded-xl border p-1.5 text-left transition sm:min-h-[100px] sm:rounded-2xl sm:p-2 ${
                       selected
                         ? "border-forest bg-sage/70 shadow-sm"
                         : "border-transparent bg-care-canvas/40 hover:bg-care-canvas"

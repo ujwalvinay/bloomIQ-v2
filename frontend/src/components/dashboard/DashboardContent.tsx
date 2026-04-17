@@ -427,7 +427,7 @@ export function DashboardContent() {
 
   return (
     <div className="min-h-full bg-[#FAF9F6] pb-12">
-      <header className="flex flex-col gap-4 overflow-visible border-b border-stone-200/60 bg-[#FAF9F6]/95 px-6 py-5 backdrop-blur-sm lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-6">
+      <header className="flex flex-col gap-4 overflow-visible border-b border-stone-200/60 bg-[#FAF9F6]/95 px-4 py-4 backdrop-blur-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-6">
         <div className="relative z-20 max-w-xl min-w-0 flex-1">
           <PlantSearchCombobox
             value={search}
@@ -474,7 +474,7 @@ export function DashboardContent() {
         </div>
       </header>
 
-      <main className="px-6 py-8 lg:px-10 lg:py-10">
+      <main className="px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
         {error ? (
           <p
             className="mb-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -487,7 +487,7 @@ export function DashboardContent() {
         <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-muted">
           Dashboard overview
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
           Your Conservatory
         </h1>
 
@@ -562,33 +562,35 @@ export function DashboardContent() {
                 return (
                   <li
                     key={t._id}
-                    className="flex items-center gap-4 rounded-[1.25rem] bg-white px-5 py-4 ring-1 ring-stone-200/60"
+                    className="flex flex-col gap-3 rounded-[1.25rem] bg-white px-4 py-4 ring-1 ring-stone-200/60 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
                   >
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void completeTask(t._id)}
-                      className="shrink-0 text-olive-cta transition hover:opacity-80 disabled:opacity-40"
-                      aria-label={`Mark completed: ${headline}`}
-                    >
-                      <Circle className="h-6 w-6" strokeWidth={1.75} />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-ink">
-                        {headline}
-                      </p>
-                      <p className="text-sm text-muted">{dueLine}</p>
-                    </div>
-                    <div
-                      className={`shrink-0 rounded-full p-2 ${
-                        t.type === "fertilizing"
-                          ? "bg-stone-100 text-muted"
-                          : isCustom
-                            ? "bg-amber-50 text-amber-800"
-                            : "bg-[#D9E8D1]/80 text-olive-cta"
-                      }`}
-                    >
-                      <TaskTypeIcon type={t.type} />
+                    <div className="flex items-start gap-3 sm:contents">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void completeTask(t._id)}
+                        className="shrink-0 text-olive-cta transition hover:opacity-80 disabled:opacity-40"
+                        aria-label={`Mark completed: ${headline}`}
+                      >
+                        <Circle className="h-6 w-6" strokeWidth={1.75} />
+                      </button>
+                      <div className="min-w-0 flex-1 sm:order-none">
+                        <p className="font-semibold text-ink">
+                          {headline}
+                        </p>
+                        <p className="text-sm text-muted">{dueLine}</p>
+                      </div>
+                      <div
+                        className={`ml-auto shrink-0 rounded-full p-2 sm:ml-0 ${
+                          t.type === "fertilizing"
+                            ? "bg-stone-100 text-muted"
+                            : isCustom
+                              ? "bg-amber-50 text-amber-800"
+                              : "bg-[#D9E8D1]/80 text-olive-cta"
+                        }`}
+                      >
+                        <TaskTypeIcon type={t.type} />
+                      </div>
                     </div>
                   </li>
                 );

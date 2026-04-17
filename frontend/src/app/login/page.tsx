@@ -11,7 +11,7 @@ export default function LoginPage({ searchParams }: Props) {
   const resetOk = searchParams.reset === "1";
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-[100dvh]">
       <section className="relative hidden w-[58%] min-h-screen lg:block">
         <Image
           src="https://images.unsplash.com/photo-1614594975525-e45190c55d0b?auto=format&fit=crop&w=1600&q=80"
@@ -39,7 +39,7 @@ export default function LoginPage({ searchParams }: Props) {
         </div>
       </section>
 
-      <section className="flex flex-1 flex-col items-center justify-center bg-cream px-6 py-12 sm:px-10">
+      <section className="flex min-h-0 flex-1 flex-col items-center justify-center bg-cream px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-10 sm:py-12">
         {registered ? (
           <p className="mb-4 w-full max-w-md rounded-full bg-olive/10 px-4 py-2 text-center text-sm text-olive-dark">
             Account created. Sign in to continue.

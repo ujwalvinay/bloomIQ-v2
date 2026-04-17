@@ -589,7 +589,7 @@ export function InsightsPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-care-canvas px-6 py-10 lg:px-10">
+      <div className="min-h-screen bg-care-canvas px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
         <p className="text-sm text-muted">Loading insights…</p>
       </div>
     );
@@ -597,7 +597,7 @@ export function InsightsPageContent() {
 
   if (error && !summary) {
     return (
-      <div className="min-h-screen bg-care-canvas px-6 py-10 lg:px-10">
+      <div className="min-h-screen bg-care-canvas px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
         <p className="text-sm text-alert" role="alert">
           {error}
         </p>
@@ -606,12 +606,12 @@ export function InsightsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-care-canvas px-6 py-8 lg:px-10 lg:py-10">
-      <header className="mb-8 max-w-5xl">
+    <div className="min-h-screen bg-care-canvas px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <header className="mb-6 max-w-5xl sm:mb-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
           Collection analysis
         </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-ink lg:text-4xl">
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl lg:text-4xl">
           Your conservatory insights
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted">

@@ -163,8 +163,8 @@ export function AddPlantContent() {
   }
 
   return (
-    <div className="min-h-full bg-[#FAF9F6] pb-16">
-      <header className="flex flex-col gap-4 border-b border-stone-200/60 bg-[#FAF9F6]/95 px-6 py-5 backdrop-blur-sm lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-6">
+    <div className="min-h-full bg-[#FAF9F6] pb-20">
+      <header className="flex flex-col gap-4 border-b border-stone-200/60 bg-[#FAF9F6]/95 px-4 py-4 backdrop-blur-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-6">
         <div className="relative max-w-xl flex-1">
           <PlantSearchCombobox
             value={search}
@@ -204,7 +204,7 @@ export function AddPlantContent() {
 
       <main className="px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
         <div className="mx-auto flex w-full max-w-[1100px] flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] ring-1 ring-stone-200/50 lg:flex-row lg:min-h-[560px]">
-          <div className="flex flex-col bg-[#E8E4D9] px-8 py-10 lg:w-[min(44%,420px)] lg:shrink-0 lg:px-10 lg:py-12">
+          <div className="flex flex-col bg-[#E8E4D9] px-4 py-8 sm:px-8 sm:py-10 lg:w-[min(44%,420px)] lg:shrink-0 lg:px-10 lg:py-12">
             <input
               ref={fileRef}
               type="file"
@@ -261,11 +261,11 @@ export function AddPlantContent() {
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col bg-white px-8 py-10 lg:px-12 lg:py-12">
+          <div className="flex flex-1 flex-col bg-white px-4 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
             <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-olive">
               New entry
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink lg:text-[2rem]">
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl lg:text-[2rem]">
               Expand Your Conservatory
             </h1>
 

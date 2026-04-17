@@ -3,7 +3,7 @@ import { SignupForm } from "@/components/auth/SignupForm";
 
 export default function SignupPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-cream px-4 py-10 sm:px-6 sm:py-14">
+    <div className="flex min-h-[100dvh] flex-col bg-cream px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-14">
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center">
         <div className="overflow-hidden rounded-[2rem] bg-white shadow-card lg:flex lg:min-h-[560px]">
           <section className="relative hidden min-h-[280px] w-full lg:block lg:w-1/2 lg:min-h-full">
