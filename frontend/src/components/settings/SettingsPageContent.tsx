@@ -10,8 +10,9 @@ import {
   Minus,
   Shield,
   Sprout,
+  X,
 } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   apiDelete,
@@ -134,6 +135,7 @@ function Toggle({
 }
 
 export function SettingsPageContent() {
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -148,6 +150,13 @@ export function SettingsPageContent() {
   const [avatarBust, setAvatarBust] = useState(0);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const [changePwOpen, setChangePwOpen] = useState(false);
+  const [changePwCurrent, setChangePwCurrent] = useState("");
+  const [changePwNew, setChangePwNew] = useState("");
+  const [changePwConfirm, setChangePwConfirm] = useState("");
+  const [changePwError, setChangePwError] = useState<string | null>(null);
+  const [changePwSubmitting, setChangePwSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -172,6 +181,59 @@ export function SettingsPageContent() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!changePwOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChangePwOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [changePwOpen]);
+
+  function openChangePasswordModal() {
+    setChangePwError(null);
+    setChangePwCurrent("");
+    setChangePwNew("");
+    setChangePwConfirm("");
+    setChangePwOpen(true);
+  }
+
+  async function onChangePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setChangePwError(null);
+    const cur = changePwCurrent;
+    const next = changePwNew.trim();
+    const confirm = changePwConfirm.trim();
+    if (next.length < 8) {
+      setChangePwError("New password must be at least 8 characters.");
+      return;
+    }
+    if (next !== confirm) {
+      setChangePwError("New password and confirmation do not match.");
+      return;
+    }
+    if (cur === next) {
+      setChangePwError("New password must be different from your current password.");
+      return;
+    }
+    setChangePwSubmitting(true);
+    try {
+      const res = await apiPost<{ ok: boolean }>("/api/auth/change-password", {
+        currentPassword: cur,
+        newPassword: next,
+      });
+      if (!res.success) {
+        setChangePwError(res.error || res.message || "Could not update password.");
+        return;
+      }
+      setChangePwOpen(false);
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setChangePwSubmitting(false);
+    }
+  }
 
   async function onAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -410,8 +472,9 @@ export function SettingsPageContent() {
               </h2>
               <ul className="mt-5 space-y-3">
                 <li>
-                  <Link
-                    href="/forgot-password"
+                  <button
+                    type="button"
+                    onClick={openChangePasswordModal}
                     className="flex w-full items-center gap-3 rounded-2xl bg-archive-cream px-4 py-3.5 text-left transition hover:bg-sage/50"
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-forest shadow-sm">
@@ -422,14 +485,14 @@ export function SettingsPageContent() {
                         Change password
                       </span>
                       <span className="mt-0.5 block text-xs text-muted">
-                        We&apos;ll email you a secure reset link
+                        Enter your current password, then sign in again
                       </span>
                     </span>
                     <ChevronRight
                       className="h-5 w-5 shrink-0 text-muted"
                       aria-hidden
                     />
-                  </Link>
+                  </button>
                 </li>
                 <li>
                   <button
@@ -626,6 +689,123 @@ export function SettingsPageContent() {
           </div>
         </div>
       </form>
+
+      {changePwOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]"
+          role="presentation"
+          onClick={() => {
+            if (!changePwSubmitting) setChangePwOpen(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-pw-title"
+            className="w-full max-w-md rounded-[1.5rem] bg-white p-6 shadow-card ring-1 ring-black/[0.08] sm:p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2
+                id="change-pw-title"
+                className="text-lg font-bold tracking-tight text-ink"
+              >
+                Change password
+              </h2>
+              <button
+                type="button"
+                disabled={changePwSubmitting}
+                onClick={() => setChangePwOpen(false)}
+                className="rounded-full p-1 text-muted transition hover:bg-archive-cream hover:text-ink disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              After a successful change you&apos;ll be signed out and can log in
+              with your new password.
+            </p>
+            <form onSubmit={onChangePasswordSubmit} className="mt-6 space-y-4">
+              {changePwError ? (
+                <p className="text-sm text-alert" role="alert">
+                  {changePwError}
+                </p>
+              ) : null}
+              <div>
+                <label
+                  htmlFor="change-pw-current"
+                  className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.15em] text-muted"
+                >
+                  Current password
+                </label>
+                <input
+                  id="change-pw-current"
+                  type="password"
+                  autoComplete="current-password"
+                  value={changePwCurrent}
+                  onChange={(e) => setChangePwCurrent(e.target.value)}
+                  required
+                  className="w-full rounded-full border-0 bg-input px-4 py-3 text-sm text-ink shadow-inner ring-1 ring-black/[0.06] outline-none focus:ring-2 focus:ring-forest/35"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="change-pw-new"
+                  className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.15em] text-muted"
+                >
+                  New password
+                </label>
+                <input
+                  id="change-pw-new"
+                  type="password"
+                  autoComplete="new-password"
+                  value={changePwNew}
+                  onChange={(e) => setChangePwNew(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full rounded-full border-0 bg-input px-4 py-3 text-sm text-ink shadow-inner ring-1 ring-black/[0.06] outline-none focus:ring-2 focus:ring-forest/35"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="change-pw-confirm"
+                  className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.15em] text-muted"
+                >
+                  Confirm new password
+                </label>
+                <input
+                  id="change-pw-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={changePwConfirm}
+                  onChange={(e) => setChangePwConfirm(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full rounded-full border-0 bg-input px-4 py-3 text-sm text-ink shadow-inner ring-1 ring-black/[0.06] outline-none focus:ring-2 focus:ring-forest/35"
+                />
+              </div>
+              <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  disabled={changePwSubmitting}
+                  onClick={() => setChangePwOpen(false)}
+                  className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-ink shadow-sm transition hover:bg-care-canvas disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={changePwSubmitting}
+                  className="rounded-full bg-forest px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-olive-dark disabled:opacity-60"
+                >
+                  {changePwSubmitting ? "Updating…" : "Update password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

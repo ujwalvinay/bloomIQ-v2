@@ -127,7 +127,7 @@ async function loadPlantsSample(userId: Types.ObjectId) {
 export async function GET(_request: NextRequest) {
   try {
     await connectToDatabase();
-    const auth = await requireAuth(request);
+    const auth = await requireAuth(_request);
     if (!("user" in auth)) return auth;
 
     const userId = new Types.ObjectId(auth.user._id);
