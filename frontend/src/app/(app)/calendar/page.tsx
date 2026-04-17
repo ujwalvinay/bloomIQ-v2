@@ -2,7 +2,7 @@ import { CareCalendarContent } from "@/components/calendar/CareCalendarContent";
 
 export default function CalendarPage() {
   return (
-    <main className="fixed inset-0 left-0 z-0 flex h-dvh w-full min-h-0 min-w-0 max-w-none flex-col overflow-hidden bg-cream pl-[280px]">
+    <main className="fixed bottom-0 left-0 right-0 top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-0 flex min-h-0 w-full min-w-0 flex-col overflow-hidden bg-care-canvas pl-0 lg:top-0 lg:pl-[280px]">
       <CareCalendarContent />
     </main>
   );

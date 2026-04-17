@@ -300,7 +300,7 @@ export function CareCalendarContent() {
   const completedCount = completedRows.length;
 
   return (
-    <div className="flex h-full min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden bg-care-canvas px-4 py-5 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
+    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden bg-care-canvas px-3 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
       <header className="mb-4 shrink-0 lg:mb-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
           Monthly schedule
@@ -319,8 +319,8 @@ export function CareCalendarContent() {
         </p>
       )}
 
-      <div className="flex min-h-0 w-full max-w-none flex-1 flex-col gap-6 overflow-hidden xl:flex-row xl:items-stretch xl:gap-8">
-        <section className="flex max-h-[min(560px,62vh)] min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[22px] bg-white p-4 shadow-soft sm:max-h-[min(520px,50vh)] sm:p-7 xl:h-full xl:max-h-none xl:min-w-0 xl:shrink xl:flex-1">
+      <div className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col gap-5 overflow-x-hidden overflow-y-hidden sm:gap-6 xl:flex-row xl:items-stretch xl:gap-8">
+        <section className="flex max-h-[min(520px,58vh)] min-h-0 w-full min-w-0 max-w-full shrink-0 flex-col overflow-hidden rounded-[20px] bg-white p-3 shadow-soft sm:max-h-[min(560px,62vh)] sm:rounded-[22px] sm:p-7 xl:h-full xl:max-h-none xl:shrink xl:flex-1">
           <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-bold text-ink">
@@ -376,27 +376,31 @@ export function CareCalendarContent() {
             </div>
           </div>
 
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 sm:mt-6">
+          <div className="mt-3 min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 sm:mt-6">
           {rangeLoading ? (
             <p className="py-8 text-center text-sm text-muted">
               Loading calendar…
             </p>
           ) : null}
 
-          <div className="grid grid-cols-7 gap-y-0.5 text-center text-[9px] font-semibold uppercase tracking-wider text-muted sm:gap-y-1 sm:text-[10px]">
+          <div className="grid min-w-0 grid-cols-7 gap-y-0.5 text-center text-[8px] font-semibold uppercase leading-tight tracking-tight text-muted sm:gap-y-1 sm:text-[10px] sm:tracking-wider">
             {WEEKDAYS.map((d) => (
-              <div key={d} className="truncate py-1.5 sm:py-2">
-                {d}
+              <div key={d} className="min-w-0 truncate px-0.5 py-1 sm:py-2">
+                <span className="sm:hidden">{d.slice(0, 1)}</span>
+                <span className="hidden sm:inline">{d}</span>
               </div>
             ))}
           </div>
 
           {viewMode === "month" ? (
-            <div className="mt-1 grid grid-cols-7 gap-0.5 sm:gap-2">
+            <div className="mt-1 grid min-w-0 grid-cols-7 gap-px sm:gap-2">
               {monthCells.map((day, idx) => {
                 if (day === null) {
                   return (
-                    <div key={`e-${idx}`} className="min-h-[56px] sm:min-h-[88px]" />
+                    <div
+                      key={`e-${idx}`}
+                      className="min-h-[52px] min-w-0 sm:min-h-[88px]"
+                    />
                   );
                 }
                 const key = toKey(visibleY, visibleM, day);
@@ -407,7 +411,7 @@ export function CareCalendarContent() {
                     key={key}
                     type="button"
                     onClick={() => setSelectedKey(key)}
-                    className={`flex min-h-[56px] flex-col rounded-xl border p-1.5 text-left transition sm:min-h-[88px] sm:rounded-2xl sm:p-2 ${
+                    className={`flex min-h-[52px] min-w-0 flex-col rounded-lg border p-1 text-left transition sm:min-h-[88px] sm:rounded-2xl sm:p-2 ${
                       selected
                         ? "border-forest bg-sage/70 shadow-sm"
                         : "border-transparent bg-care-canvas/40 hover:bg-care-canvas"
@@ -421,11 +425,11 @@ export function CareCalendarContent() {
                       {day}
                     </span>
                     {dots.length > 0 && (
-                      <div className="mt-auto flex flex-wrap justify-end gap-1 pt-1 text-forest">
-                        {dots.slice(0, 4).map((dot) => (
+                      <div className="mt-auto flex min-w-0 flex-wrap justify-end gap-0.5 pt-0.5 text-forest sm:gap-1 sm:pt-1">
+                        {dots.slice(0, 3).map((dot) => (
                           <span
                             key={dot.id}
-                            className={`flex h-5 w-5 items-center justify-center rounded-full shadow-sm sm:h-6 sm:w-6 ${
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full shadow-sm sm:h-6 sm:w-6 ${
                               dot.variant === "completed"
                                 ? "bg-white/60 text-forest/70 ring-1 ring-forest/20"
                                 : "bg-white/90 text-forest"
@@ -438,13 +442,13 @@ export function CareCalendarContent() {
                           >
                             <CellTaskIcon
                               kind={dot.kind}
-                              className="h-2.5 w-2.5 sm:h-3 sm:w-3"
+                              className="h-2 w-2 sm:h-3 sm:w-3"
                             />
                           </span>
                         ))}
-                        {dots.length > 4 && (
-                          <span className="text-[10px] font-bold text-muted">
-                            +{dots.length - 4}
+                        {dots.length > 3 && (
+                          <span className="text-[9px] font-bold leading-none text-muted sm:text-[10px]">
+                            +{dots.length - 3}
                           </span>
                         )}
                       </div>
@@ -454,7 +458,7 @@ export function CareCalendarContent() {
               })}
             </div>
           ) : (
-            <div className="mt-1 grid grid-cols-7 gap-0.5 sm:gap-2">
+            <div className="mt-1 grid min-w-0 grid-cols-7 gap-px sm:gap-2">
               {weekDays.map((dt) => {
                 const y = dt.getFullYear();
                 const m = dt.getMonth();
@@ -472,7 +476,7 @@ export function CareCalendarContent() {
                       setVisibleY(y);
                       setVisibleM(m);
                     }}
-                    className={`flex min-h-[72px] flex-col rounded-xl border p-1.5 text-left transition sm:min-h-[100px] sm:rounded-2xl sm:p-2 ${
+                    className={`flex min-h-[64px] min-w-0 flex-col rounded-lg border p-1 text-left transition sm:min-h-[100px] sm:rounded-2xl sm:p-2 ${
                       selected
                         ? "border-forest bg-sage/70 shadow-sm"
                         : "border-transparent bg-care-canvas/40 hover:bg-care-canvas"
@@ -512,9 +516,9 @@ export function CareCalendarContent() {
           </div>
         </section>
 
-        <aside className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden xl:h-full xl:min-w-0 xl:shrink xl:flex-1">
-          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overflow-x-hidden pr-1 pb-2">
-          <div className="rounded-[22px] bg-forest px-6 py-6 text-white shadow-soft">
+        <aside className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden xl:h-full xl:min-w-0 xl:shrink xl:flex-1">
+          <div className="min-h-0 w-full min-w-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden pb-2 pr-0.5 sm:space-y-6 sm:pr-1">
+          <div className="rounded-[20px] bg-forest px-4 py-5 text-white shadow-soft sm:rounded-[22px] sm:px-6 sm:py-6">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
               Selected day
             </p>
