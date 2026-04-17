@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,7 +28,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-cream">
-      <header className="fixed left-0 right-0 top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] min-h-[3.5rem] items-center gap-3 border-b border-sidebar-text/10 bg-sidebar-bg px-3 pt-[env(safe-area-inset-top,0px)] lg:hidden">
+      <header className="fixed left-0 right-0 top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] min-h-[3.5rem] items-center gap-2 border-b border-sidebar-text/10 bg-sidebar-bg px-3 pt-[env(safe-area-inset-top,0px)] lg:hidden">
+        <Link
+          href="/dashboard"
+          className="flex min-w-0 shrink-0 items-center outline-none ring-sidebar-text/20 focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-bg"
+        >
+          <Image
+            src="/logo.png"
+            alt="BloomIQ"
+            width={160}
+            height={56}
+            className="h-10 w-auto max-w-[min(180px,48vw)] object-contain object-left"
+            priority
+          />
+        </Link>
+        <span className="min-w-2 flex-1" aria-hidden />
+        <button
+          type="button"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sidebar-text transition hover:bg-black/[0.06]"
+          aria-label="Notifications"
+        >
+          <Bell className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+        </button>
         <button
           type="button"
           onClick={() => setMobileNavOpen(true)}
@@ -39,19 +60,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <Menu className="h-6 w-6" strokeWidth={1.75} aria-hidden />
         </button>
-        <Link
-          href="/dashboard"
-          className="flex min-w-0 flex-1 items-center gap-2 outline-none ring-sidebar-text/20 focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-bg"
-        >
-          <Image
-            src="/logo.png"
-            alt="BloomIQ"
-            width={160}
-            height={56}
-            className="h-10 w-auto max-w-[min(200px,52vw)] object-contain object-left"
-            priority
-          />
-        </Link>
       </header>
 
       {mobileNavOpen ? (

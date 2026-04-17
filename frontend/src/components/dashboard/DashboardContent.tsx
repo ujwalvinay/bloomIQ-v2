@@ -427,49 +427,52 @@ export function DashboardContent() {
 
   return (
     <div className="min-h-full bg-[#FAF9F6] pb-12">
-      <header className="flex flex-col gap-4 overflow-visible border-b border-stone-200/60 bg-[#FAF9F6]/95 px-4 py-4 backdrop-blur-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-6">
-        <div className="relative z-20 max-w-xl min-w-0 flex-1">
-          <PlantSearchCombobox
-            value={search}
-            onChange={setSearch}
-            onNavigate={() => setSearch("")}
-            placeholder="Search your botanical collection…"
-            inputClassName="bg-[#E8E6E0] focus:bg-white focus:ring-2 focus:ring-olive/25"
-            debounceMs={280}
-          />
-        </div>
-        <div className="flex items-center gap-4 lg:gap-5">
-          <button
-            type="button"
-            className="rounded-full p-2 text-muted transition hover:bg-black/[0.04] hover:text-ink"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" strokeWidth={1.75} />
-          </button>
-          <div className="flex items-center gap-3 text-right">
-            <div className="hidden min-w-0 sm:block">
-              <p className="truncate text-sm font-semibold text-ink">
-                {user?.name ?? "Grower"}
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
-                Lead botanist
-              </p>
-            </div>
-            {user?.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- cookie-auth bytes; bypass rewrite for binary
-              <img
-                src={`${absoluteApiUrl(user.avatarUrl)}?v=${encodeURIComponent(user.updatedAt ?? "")}`}
-                alt=""
-                className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
-              />
-            ) : (
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D9E8D1] text-sm font-semibold text-olive-cta"
-                aria-hidden
-              >
-                {initials(user?.name ?? "?")}
+      <header className="flex flex-col gap-3 overflow-visible border-b border-stone-200/60 bg-[#FAF9F6]/95 px-4 py-4 backdrop-blur-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:px-10 lg:py-6">
+        {/* Mobile: one row (search + avatar). Desktop (`lg:contents`): search and actions become direct flex children of the header for justify-between. */}
+        <div className="flex w-full min-w-0 flex-row items-center gap-3 lg:contents">
+          <div className="relative z-20 min-w-0 flex-1 lg:max-w-xl">
+            <PlantSearchCombobox
+              value={search}
+              onChange={setSearch}
+              onNavigate={() => setSearch("")}
+              placeholder="Search your botanical collection…"
+              inputClassName="bg-[#E8E6E0] focus:bg-white focus:ring-2 focus:ring-olive/25"
+              debounceMs={280}
+            />
+          </div>
+          <div className="flex shrink-0 items-center justify-end gap-3 lg:gap-5">
+            <button
+              type="button"
+              className="hidden rounded-full p-2 text-muted transition hover:bg-black/[0.04] hover:text-ink lg:inline-flex"
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+            <div className="flex items-center gap-3 text-right">
+              <div className="hidden min-w-0 sm:block">
+                <p className="truncate text-sm font-semibold text-ink">
+                  {user?.name ?? "Grower"}
+                </p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+                  Lead botanist
+                </p>
               </div>
-            )}
+              {user?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- cookie-auth bytes; bypass rewrite for binary
+                <img
+                  src={`${absoluteApiUrl(user.avatarUrl)}?v=${encodeURIComponent(user.updatedAt ?? "")}`}
+                  alt=""
+                  className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
+                />
+              ) : (
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D9E8D1] text-sm font-semibold text-olive-cta"
+                  aria-hidden
+                >
+                  {initials(user?.name ?? "?")}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
